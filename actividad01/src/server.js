@@ -4,6 +4,7 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const sesionesRoutes = require('./routes/sesionesRoutes');
 const usuariosRoutes = require('./routes/usuariosRoutes');
