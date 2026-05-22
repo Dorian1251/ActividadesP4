@@ -14,6 +14,11 @@
       Diagnóstico Programación IV
     </a>
   </li>
+  <li>
+    <a href="actividad01/">
+      Actividad 1 - StudySync API
+    </a>
+  </li>
 </ul>
 
 </body>
