@@ -1,0 +1,23 @@
+{
+  "name": "studysync-api",
+  "version": "1.0.0",
+  "description": "API REST del proyecto StudySync - Gestión de grupos de estudio",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "studysync",
+    "api",
+    "rest",
+    "express"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "swagger-jsdoc": "^8.0.0",
+    "swagger-ui-express": "^5.0.0"
+  }
+}
