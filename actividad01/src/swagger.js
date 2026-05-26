@@ -51,14 +51,15 @@ module.exports = swaggerJsdoc({
         info: {
             title: 'StudySync API',
             version: '1.0.0',
-            description: 'API REST para coordinar usuarios, materias, grupos, sesiones y recursos de estudio.'
+            description: 'API REST para coordinar usuarios, materias, grupos, sesiones y recursos de estudio. Algunos endpoints publican eventos Redis Pub/Sub para notificaciones en tiempo real.'
         },
         tags: [
             { name: 'Usuarios' },
             { name: 'Materias' },
             { name: 'Grupos' },
             { name: 'Sesiones' },
-            { name: 'Recursos' }
+            { name: 'Recursos' },
+            { name: 'Eventos Redis' }
         ],
         components: {
             parameters: {
@@ -191,7 +192,8 @@ module.exports = swaggerJsdoc({
                     properties: {
                         titulo: { type: 'string', example: 'Guia de Express' },
                         tipo: { type: 'string', example: 'pdf' },
-                        url: { type: 'string', format: 'uri', example: 'https://example.com/guia' }
+                        url: { type: 'string', format: 'uri', example: 'https://example.com/guia' },
+                        materia: { type: 'string', example: 'Programacion' }
                     }
                 },
                 Recurso: {
@@ -227,6 +229,7 @@ module.exports = swaggerJsdoc({
                 post: {
                     tags: ['Usuarios'],
                     summary: 'Crear usuario',
+                    description: 'Crea un usuario y publica el evento usuario.registrado en el canal study:usuario:registrado si REDIS_URL esta configurada.',
                     requestBody: createRequest('UsuarioInput'),
                     responses: {
                         201: itemResponse('Usuario creado.', 'Usuario'),
@@ -426,6 +429,7 @@ module.exports = swaggerJsdoc({
                 post: {
                     tags: ['Grupos'],
                     summary: 'Agregar integrante a un grupo',
+                    description: 'Agrega un integrante y publica el evento usuario.unido en el canal study:usuario:unido si REDIS_URL esta configurada.',
                     parameters: [idParameter('grupo')],
                     requestBody: createRequest('IntegranteInput'),
                     responses: {
@@ -454,6 +458,7 @@ module.exports = swaggerJsdoc({
                 post: {
                     tags: ['Sesiones'],
                     summary: 'Crear sesion',
+                    description: 'Crea una sesion y publica el evento sesion.creada en el canal study:sesion:creada si REDIS_URL esta configurada.',
                     requestBody: createRequest('SesionInput'),
                     responses: {
                         201: itemResponse('Sesion creada.', 'Sesion'),
@@ -526,6 +531,7 @@ module.exports = swaggerJsdoc({
                 post: {
                     tags: ['Recursos'],
                     summary: 'Crear recurso',
+                    description: 'Crea un recurso y publica el evento recurso.publicado en el canal study:recurso:publicado si REDIS_URL esta configurada.',
                     requestBody: createRequest('RecursoInput'),
                     responses: {
                         201: itemResponse('Recurso creado.', 'Recurso'),

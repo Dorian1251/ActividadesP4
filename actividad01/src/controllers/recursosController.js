@@ -1,4 +1,5 @@
 const model = require('../models/recursos');
+const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 
 const getAll = (req, res) => {
     let resultado = model.data;
@@ -28,7 +29,7 @@ const searchByTitulo = (req, res) => {
 };
 
 const create = (req, res) => {
-    const { titulo, tipo, url } = req.body;
+    const { titulo, tipo, url, materia } = req.body;
 
     const camposFaltantes = [];
     if (!titulo) camposFaltantes.push('titulo');
@@ -40,7 +41,13 @@ const create = (req, res) => {
     }
 
     const nuevo = { id: model.nextId++, titulo, tipo, url };
+    if (materia) nuevo.materia = materia;
+
     model.data.push(nuevo);
+    publicarEvento(CHANNELS.RECURSO_PUBLICADO, 'recurso.publicado', {
+        ...nuevo,
+        materia: materia || 'General'
+    });
     res.status(201).json(nuevo);
 };
 

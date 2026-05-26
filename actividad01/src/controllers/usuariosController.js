@@ -1,5 +1,6 @@
 const model = require('../models/usuarios');
 const gruposModel = require('../models/grupos');
+const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 
 const getAll = (req, res) => {
     let resultado = model.data;
@@ -59,6 +60,7 @@ const create = (req, res) => {
 
     const nuevo = { id: model.nextId++, nombre, email, rol };
     model.data.push(nuevo);
+    publicarEvento(CHANNELS.USUARIO_REGISTRADO, 'usuario.registrado', nuevo);
     res.status(201).json(nuevo);
 };
 

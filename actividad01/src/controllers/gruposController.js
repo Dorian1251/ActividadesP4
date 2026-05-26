@@ -1,4 +1,5 @@
 const model = require('../models/grupos');
+const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 
 const getAll = (req, res) => {
     let resultado = model.data;
@@ -50,6 +51,13 @@ const addIntegrante = (req, res) => {
     }
 
     item.integrantes.push(integrante);
+    publicarEvento(CHANNELS.USUARIO_UNIDO, 'usuario.unido', {
+        grupoId: item.id,
+        grupo: item.nombre,
+        materia: item.materia,
+        usuario: integrante,
+        organizador: item.organizador || 'Organizador no especificado'
+    });
     res.status(201).json(item);
 };
 

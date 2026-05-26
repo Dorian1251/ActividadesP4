@@ -104,6 +104,36 @@ npm start
 
 El servidor iniciará en `http://localhost:3000`.
 
+## Integración con Redis Pub/Sub
+
+La API puede publicar eventos de notificación en Redis/Upstash cuando ocurren acciones importantes. Para activarlo, configurar la variable de entorno:
+
+```env
+REDIS_URL=rediss://default:TUPASSWORD@TUHOST:6379
+```
+
+Canales publicados:
+
+| Acción | Evento | Canal |
+|--------|--------|-------|
+| Crear sesión | `sesion.creada` | `study:sesion:creada` |
+| Registrar usuario | `usuario.registrado` | `study:usuario:registrado` |
+| Agregar integrante a grupo | `usuario.unido` | `study:usuario:unido` |
+| Crear recurso | `recurso.publicado` | `study:recurso:publicado` |
+
+Cada mensaje se publica con la estructura:
+
+```json
+{
+  "tipo": "sesion.creada",
+  "payload": {},
+  "timestamp": "2026-05-26T00:00:00.000Z",
+  "version": "1.0"
+}
+```
+
+Si el `subscriber-service` de `actividad02` está ejecutándose con `psubscribe('study:*')`, recibirá automáticamente los eventos generados desde Swagger o Thunder Client.
+
 ## Despliegue
 
 **URL de producción:** *pendiente — configurar en Render o Railway*

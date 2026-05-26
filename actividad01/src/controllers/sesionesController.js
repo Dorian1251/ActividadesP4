@@ -1,4 +1,5 @@
 const model = require('../models/sesiones');
+const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 
 const getAll = (req, res) => {
     let resultado = model.data;
@@ -40,6 +41,7 @@ const create = (req, res) => {
 
     const nuevo = { id: model.nextId++, titulo, materia, fecha };
     model.data.push(nuevo);
+    publicarEvento(CHANNELS.SESION_CREADA, 'sesion.creada', nuevo);
     res.status(201).json(nuevo);
 };
 
