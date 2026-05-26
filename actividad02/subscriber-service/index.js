@@ -10,7 +10,7 @@ dotenv.config({
   path: path.resolve(__dirname, '../.env')
 });
 
-const CHANNEL = 'studysync:notificaciones';
+const PATTERN = 'study:*';
 
 const subscriber = new Redis(process.env.REDIS_URL);
 
@@ -18,17 +18,18 @@ subscriber.on('error', (error) => {
   console.error('Error Redis:', error.message);
 });
 
-await subscriber.subscribe(CHANNEL);
+await subscriber.psubscribe(PATTERN);
 
 console.log('Subscriber Service - StudySync');
-console.log(`Escuchando canal: ${CHANNEL}`);
+console.log(`Escuchando patron de canales: ${PATTERN}`);
 console.log('Esperando mensajes...\n');
 
-subscriber.on('message', (channel, message) => {
+subscriber.on('pmessage', (pattern, channel, message) => {
   try {
     const evento = JSON.parse(message);
 
     console.log('====================================');
+    console.log(`Patron: ${pattern}`);
     console.log(`Canal: ${channel}`);
     console.log(`Tipo de evento: ${evento.tipo}`);
     console.log(`Timestamp: ${evento.timestamp}`);
@@ -45,6 +46,10 @@ subscriber.on('message', (channel, message) => {
 
     if (evento.tipo === 'recurso.publicado') {
       console.log(`Notificacion: Nuevo recurso publicado para ${evento.payload.materia}`);
+    }
+    if (evento.tipo === 'usuario.unido') {
+      console.log(`Notificacion: ${evento.payload.usuario} se unio al grupo ${evento.payload.grupo}`);
+      console.log(`Alerta para organizador: ${evento.payload.organizador}`);
     }
 
     console.log('====================================\n');
