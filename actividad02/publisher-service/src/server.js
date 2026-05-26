@@ -6,7 +6,8 @@ const path = require('path');
 dotenv.config({
     path: path.resolve(__dirname, '../../.env')
 });
-const { publicarEvento } = require('./publisher');
+
+const { publicarEvento, CHANNELS } = require('./publisher');
 
 const app = express();
 app.use(express.json());
@@ -14,10 +15,12 @@ app.use(express.json());
 const sesiones = [];
 const usuarios = [];
 const recursos = [];
+const grupos = [];
 
 let nextSesionId = 1;
 let nextUsuarioId = 1;
 let nextRecursoId = 1;
+let nextGrupoId = 1;
 
 app.get('/', (req, res) => {
     res.json({
@@ -45,7 +48,7 @@ app.post('/sesiones', async (req, res, next) => {
 
         sesiones.push(sesion);
 
-        await publicarEvento('sesion.creada', sesion);
+        await publicarEvento(CHANNELS.SESION_CREADA, 'sesion.creada', sesion);
 
         res.status(201).json(sesion);
     } catch (error) {
@@ -100,9 +103,36 @@ app.post('/recursos', async (req, res, next) => {
 
         recursos.push(recurso);
 
-        await publicarEvento('recurso.publicado', recurso);
+        await publicarEvento(CHANNELS.RECURSO_PUBLICADO, 'recurso.publicado', recurso);
 
         res.status(201).json(recurso);
+    } catch (error) {
+        next(error);
+    }
+});
+
+app.post('/grupos/unirse', async (req, res, next) => {
+    try {
+        const { grupo, usuario, organizador } = req.body;
+
+        if (!grupo || !usuario || !organizador) {
+            return res.status(400).json({
+                error: 'Faltan campos obligatorios: grupo, usuario, organizador'
+            });
+        }
+
+        const union = {
+            id: nextGrupoId++,
+            grupo,
+            usuario,
+            organizador
+        };
+
+        grupos.push(union);
+
+        await publicarEvento(CHANNELS.USUARIO_UNIDO, 'usuario.unido', union);
+
+        res.status(201).json(union);
     } catch (error) {
         next(error);
     }

@@ -2,9 +2,13 @@ const Redis = require('ioredis');
 
 const redis = new Redis(process.env.REDIS_URL);
 
-const CHANNEL = 'studysync:notificaciones';
+const CHANNELS = {
+    SESION_CREADA: 'study:sesion:creada',
+    USUARIO_UNIDO: 'study:usuario:unido',
+    RECURSO_PUBLICADO: 'study:recurso:publicado'
+};
 
-const publicarEvento = async (tipo, payload) => {
+const publicarEvento = async (canal, tipo, payload) => {
     const evento = {
         tipo,
         payload,
@@ -12,12 +16,12 @@ const publicarEvento = async (tipo, payload) => {
         version: '1.0'
     };
 
-    await redis.publish(CHANNEL, JSON.stringify(evento));
+    await redis.publish(canal, JSON.stringify(evento));
 
-    console.log(`Evento publicado en ${CHANNEL}:`, evento);
+    console.log(`Evento publicado en ${canal}:`, evento);
 };
 
 module.exports = {
     publicarEvento,
-    CHANNEL
+    CHANNELS
 };
