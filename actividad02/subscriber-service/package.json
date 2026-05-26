@@ -12,6 +12,6 @@
   "description": "",
   "dependencies": {
     "dotenv": "^17.4.2",
-    "redis": "^5.12.1"
+    "ioredis": "^5.10.1"
   }
 }

@@ -1,37 +1,54 @@
-import 'dotenv/config';
-import { createClient } from 'redis';
+import dotenv from 'dotenv';
+import Redis from 'ioredis';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Crear cliente de Redis usando la URL del .env
-const subscriber = createClient({
-    url: process.env.REDIS_URL,
-    socket: {
-        tls: true // conexión segura (SSL/TLS)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({
+  path: path.resolve(__dirname, '../.env')
+});
+
+const CHANNEL = 'studysync:notificaciones';
+
+const subscriber = new Redis(process.env.REDIS_URL);
+
+subscriber.on('error', (error) => {
+  console.error('Error Redis:', error.message);
+});
+
+await subscriber.subscribe(CHANNEL);
+
+console.log('Subscriber Service - StudySync');
+console.log(`Escuchando canal: ${CHANNEL}`);
+console.log('Esperando mensajes...\n');
+
+subscriber.on('message', (channel, message) => {
+  try {
+    const evento = JSON.parse(message);
+
+    console.log('====================================');
+    console.log(`Canal: ${channel}`);
+    console.log(`Tipo de evento: ${evento.tipo}`);
+    console.log(`Timestamp: ${evento.timestamp}`);
+    console.log(`Version: ${evento.version}`);
+    console.log('Payload:', evento.payload);
+
+    if (evento.tipo === 'sesion.creada') {
+      console.log(`Notificacion: Nueva sesion creada para ${evento.payload.materia}`);
     }
+
+    if (evento.tipo === 'usuario.registrado') {
+      console.log(`Notificacion: Nuevo usuario registrado: ${evento.payload.nombre}`);
+    }
+
+    if (evento.tipo === 'recurso.publicado') {
+      console.log(`Notificacion: Nuevo recurso publicado para ${evento.payload.materia}`);
+    }
+
+    console.log('====================================\n');
+  } catch (error) {
+    console.error('Mensaje recibido no es JSON valido:', message);
+  }
 });
-
-// Manejo de errores de conexión con Redis
-subscriber.on('error', (err) => {
-    console.log('Error Redis:', err);
-});
-
-// Función principal que inicia el suscriptor
-async function startSubscriber() {
-
-    // Conectar al servidor Redis
-    await subscriber.connect();
-
-    console.log('Suscriptor escuchando canal...');
-
-    // Suscribirse al canal "studysync:notificaciones"
-    // Cada vez que llegue un mensaje, se ejecuta esta función
-    await subscriber.subscribe('studysync:notificaciones', (message) => {
-
-        console.log('\nNotificación recibida:');
-        console.log(message); // muestra el mensaje recibido
-
-    });
-
-}
-
-// Ejecuta el subscriber al iniciar el archivo
-startSubscriber();

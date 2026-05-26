@@ -1,11 +1,12 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
-const { publicarEvento } = require('./publisher');
+
 
 dotenv.config({
     path: path.resolve(__dirname, '../../.env')
 });
+const { publicarEvento } = require('./publisher');
 
 const app = express();
 app.use(express.json());
