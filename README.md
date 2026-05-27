@@ -19,6 +19,11 @@
       Actividad 1 - StudySync API
     </a>
   </li>
+  <li>
+    <a href="actividad02/">
+      Actividad 2 - StudySync API
+    </a>
+  </li>
 </ul>
 
 </body>
