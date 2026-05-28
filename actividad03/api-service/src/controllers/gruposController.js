@@ -1,6 +1,6 @@
 const prisma = require('../config/db');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
-const { limpiarDatos, obtenerId, validarCampos } = require('../utils/request');
+const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
 const includeRelaciones = {
   materia: true,
@@ -10,7 +10,49 @@ const includeRelaciones = {
 
 const obtenerGrupos = async (req, res, next) => {
   try {
+    const { q, materia } = req.query;
+    const { skip, take } = obtenerPaginacion(req.query);
+    const where = limpiarDatos({
+      nombre: q ? { contains: q, mode: 'insensitive' } : undefined,
+      materia: materia
+        ? {
+            OR: [
+              { nombre: { contains: materia, mode: 'insensitive' } },
+              { codigo: { contains: materia, mode: 'insensitive' } },
+              Number.isInteger(Number(materia)) ? { id: Number(materia) } : undefined
+            ].filter(Boolean)
+          }
+        : undefined
+    });
+
     const grupos = await prisma.grupo.findMany({
+      where,
+      include: includeRelaciones,
+      skip,
+      take,
+      orderBy: { id: 'asc' }
+    });
+
+    res.json(grupos);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerGruposPorMateria = async (req, res, next) => {
+  try {
+    const materia = req.params.materia;
+
+    const grupos = await prisma.grupo.findMany({
+      where: {
+        materia: {
+          OR: [
+            { nombre: { contains: materia, mode: 'insensitive' } },
+            { codigo: { contains: materia, mode: 'insensitive' } },
+            Number.isInteger(Number(materia)) ? { id: Number(materia) } : undefined
+          ].filter(Boolean)
+        }
+      },
       include: includeRelaciones,
       orderBy: { id: 'asc' }
     });
@@ -199,5 +241,6 @@ module.exports = {
   eliminarGrupo,
   obtenerGrupoPorId,
   obtenerGrupos,
+  obtenerGruposPorMateria,
   quitarIntegrante
 };

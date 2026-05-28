@@ -23,6 +23,12 @@ const swaggerSpec = {
       get: {
         tags: ['Usuarios'],
         summary: 'Listar usuarios',
+        parameters: [
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Buscar por nombre' },
+          { name: 'rol', in: 'query', schema: { type: 'string' }, description: 'Filtrar por rol' },
+          { name: 'page', in: 'query', schema: { type: 'integer', example: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', example: 10 } }
+        ],
         responses: { 200: { description: 'Lista de usuarios' } }
       },
       post: {
@@ -37,6 +43,22 @@ const swaggerSpec = {
           }
         },
         responses: { 201: { description: 'Usuario creado' }, 400: { description: 'Datos invalidos' } }
+      }
+    },
+    '/api/usuarios/rol/{rol}': {
+      get: {
+        tags: ['Usuarios'],
+        summary: 'Listar usuarios por rol',
+        parameters: [{ name: 'rol', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Usuarios filtrados por rol' } }
+      }
+    },
+    '/api/usuarios/{id}/grupos': {
+      get: {
+        tags: ['Usuarios'],
+        summary: 'Listar grupos donde participa un usuario',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Grupos del usuario' }, 404: { description: 'Usuario no encontrado' } }
       }
     },
     '/api/usuarios/{id}': {
@@ -66,6 +88,12 @@ const swaggerSpec = {
       get: {
         tags: ['Materias'],
         summary: 'Listar materias',
+        parameters: [
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Buscar por nombre' },
+          { name: 'semestre', in: 'query', schema: { type: 'string' }, description: 'Filtrar por semestre' },
+          { name: 'page', in: 'query', schema: { type: 'integer', example: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', example: 10 } }
+        ],
         responses: { 200: { description: 'Lista de materias' } }
       },
       post: {
@@ -75,11 +103,27 @@ const swaggerSpec = {
           required: true,
           content: {
             'application/json': {
-              example: { nombre: 'Programacion IV', codigo: 'PROG4', docente: 'Ing. Ramirez' }
+              example: { nombre: 'Programacion IV', codigo: 'PROG4', docente: 'Ing. Ramirez', semestre: '4' }
             }
           }
         },
         responses: { 201: { description: 'Materia creada' } }
+      }
+    },
+    '/api/materias/semestre/{semestre}': {
+      get: {
+        tags: ['Materias'],
+        summary: 'Listar materias por semestre',
+        parameters: [{ name: 'semestre', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Materias filtradas por semestre' } }
+      }
+    },
+    '/api/materias/{id}/sesiones': {
+      get: {
+        tags: ['Materias'],
+        summary: 'Listar sesiones de una materia',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'Sesiones de la materia' }, 404: { description: 'Materia no encontrada' } }
       }
     },
     '/api/materias/{id}': {
@@ -107,6 +151,12 @@ const swaggerSpec = {
       get: {
         tags: ['Grupos'],
         summary: 'Listar grupos',
+        parameters: [
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Buscar por nombre' },
+          { name: 'materia', in: 'query', schema: { type: 'string' }, description: 'Filtrar por materia: id, nombre o codigo' },
+          { name: 'page', in: 'query', schema: { type: 'integer', example: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', example: 10 } }
+        ],
         responses: { 200: { description: 'Lista de grupos' } }
       },
       post: {
@@ -126,6 +176,14 @@ const swaggerSpec = {
           }
         },
         responses: { 201: { description: 'Grupo creado' } }
+      }
+    },
+    '/api/grupos/materia/{materia}': {
+      get: {
+        tags: ['Grupos'],
+        summary: 'Listar grupos por materia',
+        parameters: [{ name: 'materia', in: 'path', required: true, schema: { type: 'string' }, description: 'ID, nombre o codigo de materia' }],
+        responses: { 200: { description: 'Grupos filtrados por materia' } }
       }
     },
     '/api/grupos/{id}': {
@@ -176,6 +234,13 @@ const swaggerSpec = {
       get: {
         tags: ['Sesiones'],
         summary: 'Listar sesiones desde Supabase',
+        parameters: [
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Buscar por titulo' },
+          { name: 'materia', in: 'query', schema: { type: 'string' }, description: 'Filtrar por materia: id, nombre o codigo' },
+          { name: 'fecha', in: 'query', schema: { type: 'string' }, description: 'Filtrar por fecha' },
+          { name: 'page', in: 'query', schema: { type: 'integer', example: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', example: 10 } }
+        ],
         responses: { 200: { description: 'Lista de sesiones' } }
       },
       post: {
@@ -198,6 +263,22 @@ const swaggerSpec = {
           }
         },
         responses: { 201: { description: 'Sesion creada' } }
+      }
+    },
+    '/api/sesiones/materia/{materia}': {
+      get: {
+        tags: ['Sesiones'],
+        summary: 'Listar sesiones por materia',
+        parameters: [{ name: 'materia', in: 'path', required: true, schema: { type: 'string' }, description: 'ID, nombre o codigo de materia' }],
+        responses: { 200: { description: 'Sesiones filtradas por materia' } }
+      }
+    },
+    '/api/sesiones/fecha/{fecha}': {
+      get: {
+        tags: ['Sesiones'],
+        summary: 'Listar sesiones por fecha',
+        parameters: [{ name: 'fecha', in: 'path', required: true, schema: { type: 'string' }, example: '2026-05-28' }],
+        responses: { 200: { description: 'Sesiones filtradas por fecha' } }
       }
     },
     '/api/sesiones/{id}': {
@@ -225,6 +306,12 @@ const swaggerSpec = {
       get: {
         tags: ['Recursos'],
         summary: 'Listar recursos',
+        parameters: [
+          { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Buscar por titulo' },
+          { name: 'tipo', in: 'query', schema: { type: 'string' }, description: 'Filtrar por tipo' },
+          { name: 'page', in: 'query', schema: { type: 'integer', example: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', example: 10 } }
+        ],
         responses: { 200: { description: 'Lista de recursos' } }
       },
       post: {
@@ -246,6 +333,22 @@ const swaggerSpec = {
           }
         },
         responses: { 201: { description: 'Recurso creado' } }
+      }
+    },
+    '/api/recursos/tipo/{tipo}': {
+      get: {
+        tags: ['Recursos'],
+        summary: 'Listar recursos por tipo',
+        parameters: [{ name: 'tipo', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Recursos filtrados por tipo' } }
+      }
+    },
+    '/api/recursos/buscar/{titulo}': {
+      get: {
+        tags: ['Recursos'],
+        summary: 'Buscar recursos por titulo',
+        parameters: [{ name: 'titulo', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Recursos encontrados' } }
       }
     },
     '/api/recursos/{id}': {

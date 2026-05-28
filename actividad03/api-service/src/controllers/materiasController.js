@@ -1,5 +1,5 @@
 const prisma = require('../config/db');
-const { limpiarDatos, obtenerId, validarCampos } = require('../utils/request');
+const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
 const includeRelaciones = {
   sesiones: true,
@@ -9,12 +9,65 @@ const includeRelaciones = {
 
 const obtenerMaterias = async (req, res, next) => {
   try {
+    const { q, semestre } = req.query;
+    const { skip, take } = obtenerPaginacion(req.query);
+    const where = limpiarDatos({
+      nombre: q ? { contains: q, mode: 'insensitive' } : undefined,
+      semestre: semestre || undefined
+    });
+
     const materias = await prisma.materia.findMany({
+      where,
+      include: includeRelaciones,
+      skip,
+      take,
+      orderBy: { id: 'asc' }
+    });
+
+    res.json(materias);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerMateriasPorSemestre = async (req, res, next) => {
+  try {
+    const materias = await prisma.materia.findMany({
+      where: { semestre: req.params.semestre },
       include: includeRelaciones,
       orderBy: { id: 'asc' }
     });
 
     res.json(materias);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerSesionesDeMateria = async (req, res, next) => {
+  try {
+    const id = obtenerId(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID invalido' });
+    }
+
+    const materia = await prisma.materia.findUnique({
+      where: { id },
+      include: {
+        sesiones: {
+          include: {
+            usuario: true
+          }
+        }
+      }
+    });
+
+    if (!materia) {
+      return res.status(404).json({ error: `No existe una materia con id ${id}` });
+    }
+
+    res.json(materia.sesiones);
   } catch (error) {
     next(error);
   }
@@ -45,7 +98,7 @@ const obtenerMateriaPorId = async (req, res, next) => {
 
 const crearMateria = async (req, res, next) => {
   try {
-    const campoFaltante = validarCampos(req.body, ['nombre', 'codigo', 'docente']);
+    const campoFaltante = validarCampos(req.body, ['nombre', 'codigo']);
 
     if (campoFaltante) {
       return res.status(400).json({ error: `Falta el campo obligatorio: ${campoFaltante}` });
@@ -55,7 +108,8 @@ const crearMateria = async (req, res, next) => {
       data: {
         nombre: req.body.nombre,
         codigo: req.body.codigo,
-        docente: req.body.docente
+        docente: req.body.docente,
+        semestre: req.body.semestre
       }
     });
 
@@ -84,7 +138,8 @@ const actualizarMateria = async (req, res, next) => {
       data: limpiarDatos({
         nombre: req.body.nombre,
         codigo: req.body.codigo,
-        docente: req.body.docente
+        docente: req.body.docente,
+        semestre: req.body.semestre
       })
     });
 
@@ -121,5 +176,7 @@ module.exports = {
   crearMateria,
   eliminarMateria,
   obtenerMateriaPorId,
-  obtenerMaterias
+  obtenerMaterias,
+  obtenerMateriasPorSemestre,
+  obtenerSesionesDeMateria
 };

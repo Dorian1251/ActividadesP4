@@ -1,6 +1,6 @@
 const prisma = require('../config/db');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
-const { limpiarDatos, obtenerId, validarCampos } = require('../utils/request');
+const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
 const includeRelaciones = {
   sesiones: true,
@@ -11,12 +11,66 @@ const includeRelaciones = {
 
 const obtenerUsuarios = async (req, res, next) => {
   try {
+    const { q, rol } = req.query;
+    const { skip, take } = obtenerPaginacion(req.query);
+    const where = limpiarDatos({
+      nombre: q ? { contains: q, mode: 'insensitive' } : undefined,
+      rol: rol || undefined
+    });
+
     const usuarios = await prisma.usuario.findMany({
+      where,
+      include: includeRelaciones,
+      skip,
+      take,
+      orderBy: { id: 'asc' }
+    });
+
+    res.json(usuarios);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerUsuariosPorRol = async (req, res, next) => {
+  try {
+    const usuarios = await prisma.usuario.findMany({
+      where: { rol: req.params.rol },
       include: includeRelaciones,
       orderBy: { id: 'asc' }
     });
 
     res.json(usuarios);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerGruposDelUsuario = async (req, res, next) => {
+  try {
+    const id = obtenerId(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID invalido' });
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id },
+      include: {
+        grupos: {
+          include: {
+            materia: true,
+            organizador: true
+          }
+        }
+      }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: `No existe un usuario con id ${id}` });
+    }
+
+    res.json(usuario.grupos);
   } catch (error) {
     next(error);
   }
@@ -124,6 +178,8 @@ module.exports = {
   actualizarUsuario,
   crearUsuario,
   eliminarUsuario,
+  obtenerGruposDelUsuario,
   obtenerUsuarioPorId,
-  obtenerUsuarios
+  obtenerUsuarios,
+  obtenerUsuariosPorRol
 };

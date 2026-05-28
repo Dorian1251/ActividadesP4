@@ -28,7 +28,8 @@ model Materia {
   id        Int       @id @default(autoincrement())
   nombre    String
   codigo    String    @unique
-  docente   String
+  docente   String?
+  semestre  String?
   sesiones  Sesion[]
   recursos  Recurso[]
   grupos    Grupo[]

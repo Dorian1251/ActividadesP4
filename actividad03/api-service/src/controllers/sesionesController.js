@@ -1,6 +1,6 @@
 const prisma = require('../config/db');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
-const { limpiarDatos, obtenerId, validarCampos } = require('../utils/request');
+const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
 const includeRelaciones = {
   usuario: true,
@@ -9,7 +9,64 @@ const includeRelaciones = {
 
 const obtenerSesiones = async (req, res, next) => {
   try {
+    const { q, materia, fecha } = req.query;
+    const { skip, take } = obtenerPaginacion(req.query);
+    const where = limpiarDatos({
+      titulo: q ? { contains: q, mode: 'insensitive' } : undefined,
+      fecha: fecha || undefined,
+      materia: materia
+        ? {
+            OR: [
+              { nombre: { contains: materia, mode: 'insensitive' } },
+              { codigo: { contains: materia, mode: 'insensitive' } },
+              Number.isInteger(Number(materia)) ? { id: Number(materia) } : undefined
+            ].filter(Boolean)
+          }
+        : undefined
+    });
+
     const sesiones = await prisma.sesion.findMany({
+      where,
+      include: includeRelaciones,
+      skip,
+      take,
+      orderBy: { id: 'asc' }
+    });
+
+    res.json(sesiones);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerSesionesPorMateria = async (req, res, next) => {
+  try {
+    const materia = req.params.materia;
+
+    const sesiones = await prisma.sesion.findMany({
+      where: {
+        materia: {
+          OR: [
+            { nombre: { contains: materia, mode: 'insensitive' } },
+            { codigo: { contains: materia, mode: 'insensitive' } },
+            Number.isInteger(Number(materia)) ? { id: Number(materia) } : undefined
+          ].filter(Boolean)
+        }
+      },
+      include: includeRelaciones,
+      orderBy: { id: 'asc' }
+    });
+
+    res.json(sesiones);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerSesionesPorFecha = async (req, res, next) => {
+  try {
+    const sesiones = await prisma.sesion.findMany({
+      where: { fecha: req.params.fecha },
       include: includeRelaciones,
       orderBy: { id: 'asc' }
     });
@@ -140,5 +197,7 @@ module.exports = {
   crearSesion,
   eliminarSesion,
   obtenerSesionPorId,
-  obtenerSesiones
+  obtenerSesiones,
+  obtenerSesionesPorFecha,
+  obtenerSesionesPorMateria
 };

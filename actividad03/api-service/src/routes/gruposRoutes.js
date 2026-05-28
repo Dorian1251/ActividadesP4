@@ -4,6 +4,7 @@ const gruposController = require('../controllers/gruposController');
 const router = express.Router();
 
 router.get('/', gruposController.obtenerGrupos);
+router.get('/materia/:materia', gruposController.obtenerGruposPorMateria);
 router.get('/:id', gruposController.obtenerGrupoPorId);
 router.post('/', gruposController.crearGrupo);
 router.post('/:id/integrantes', gruposController.agregarIntegrante);

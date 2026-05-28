@@ -1,6 +1,6 @@
 const prisma = require('../config/db');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
-const { limpiarDatos, obtenerId, validarCampos } = require('../utils/request');
+const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
 const includeRelaciones = {
   usuario: true,
@@ -9,7 +9,50 @@ const includeRelaciones = {
 
 const obtenerRecursos = async (req, res, next) => {
   try {
+    const { q, tipo } = req.query;
+    const { skip, take } = obtenerPaginacion(req.query);
+    const where = limpiarDatos({
+      titulo: q ? { contains: q, mode: 'insensitive' } : undefined,
+      tipo: tipo || undefined
+    });
+
     const recursos = await prisma.recurso.findMany({
+      where,
+      include: includeRelaciones,
+      skip,
+      take,
+      orderBy: { id: 'asc' }
+    });
+
+    res.json(recursos);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const obtenerRecursosPorTipo = async (req, res, next) => {
+  try {
+    const recursos = await prisma.recurso.findMany({
+      where: { tipo: req.params.tipo },
+      include: includeRelaciones,
+      orderBy: { id: 'asc' }
+    });
+
+    res.json(recursos);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const buscarRecursosPorTitulo = async (req, res, next) => {
+  try {
+    const recursos = await prisma.recurso.findMany({
+      where: {
+        titulo: {
+          contains: req.params.titulo,
+          mode: 'insensitive'
+        }
+      },
       include: includeRelaciones,
       orderBy: { id: 'asc' }
     });
@@ -128,8 +171,10 @@ const eliminarRecurso = async (req, res, next) => {
 
 module.exports = {
   actualizarRecurso,
+  buscarRecursosPorTitulo,
   crearRecurso,
   eliminarRecurso,
   obtenerRecursoPorId,
-  obtenerRecursos
+  obtenerRecursos,
+  obtenerRecursosPorTipo
 };
