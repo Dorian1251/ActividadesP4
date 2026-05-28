@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudySync - Notificaciones Actividad 03</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 34px 18px;
+      font-family: Arial, sans-serif;
+      color: #172033;
+      background: #f4f7fb;
+    }
+
+    main {
+      width: min(820px, 100%);
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      color: #1a56db;
+      font-size: 30px;
+    }
+
+    .subtitulo {
+      margin: 0 0 18px;
+      color: #526071;
+      line-height: 1.5;
+    }
+
+    #status {
+      display: inline-flex;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 18px;
+      font-weight: 700;
+    }
+
+    .conectado {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .desconectado {
+      background: #fee2e2;
+      color: #7f1d1d;
+    }
+
+    .usuario-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      grid-template-columns: minmax(280px, 420px);
+      place-content: center;
+      padding: 20px;
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .usuario-panel.oculto {
+      display: none;
+    }
+
+    .usuario-form {
+      display: grid;
+      gap: 12px;
+      padding: 22px;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.25);
+    }
+
+    .usuario-form h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .usuario-form p {
+      margin: 0;
+      color: #526071;
+      line-height: 1.45;
+    }
+
+    input,
+    button {
+      padding: 10px 12px;
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    input {
+      border: 1px solid #cbd5e1;
+    }
+
+    button {
+      border: 0;
+      color: #ffffff;
+      background: #1a56db;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .usuario-activo {
+      display: none;
+      margin-bottom: 18px;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    .usuario-activo.visible {
+      display: block;
+    }
+
+    #eventos {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    #eventos li {
+      border-radius: 8px;
+      background: #ffffff;
+      border: 1px solid #dbe4f0;
+      box-shadow: 0 8px 24px rgba(29, 45, 68, 0.08);
+      overflow: hidden;
+      animation: aparecer 0.3s ease;
+    }
+
+    .vacio {
+      padding: 14px;
+      color: #64748b;
+    }
+
+    .evento-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #eff6ff;
+      border-left: 4px solid #1a56db;
+    }
+
+    .tipo {
+      font-weight: 700;
+      color: #1a56db;
+    }
+
+    .canal {
+      color: #526071;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+
+    .evento-body {
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .campo {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .campo:last-child {
+      border-bottom: 0;
+    }
+
+    .campo-nombre {
+      color: #64748b;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .campo-valor {
+      color: #172033;
+      overflow-wrap: anywhere;
+    }
+
+    .evento-footer {
+      padding: 10px 14px;
+      background: #f8fafc;
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    @keyframes aparecer {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>StudySync - Tiempo Real Actividad 03</h1>
+    <p class="subtitulo">Eventos publicados por la API REST, persistidos en Supabase y retransmitidos con Redis Pub/Sub + Socket.io.</p>
+
+    <div id="status" class="desconectado">Conectando...</div>
+
+    <div class="usuario-panel">
+      <div class="usuario-form">
+        <h2>Ingresa tu nombre</h2>
+        <p>Este nombre se mostrara en las tarjetas de notificacion de esta ventana.</p>
+        <input id="nombreUsuario" type="text" placeholder="Ejemplo: Dorian" autocomplete="name" autofocus>
+        <button id="guardarNombre" type="button">Entrar al panel</button>
+      </div>
+    </div>
+
+    <div id="usuarioActivo" class="usuario-activo"></div>
+
+    <ul id="eventos">
+      <li class="vacio">Esperando eventos... crea una sesion, usuario, recurso o integrante desde Swagger.</li>
+    </ul>
+  </main>
+
+  <script>
+    const socket = io();
+    const inputNombre = document.getElementById('nombreUsuario');
+    const botonNombre = document.getElementById('guardarNombre');
+    const panelUsuario = document.querySelector('.usuario-panel');
+    const usuarioActivo = document.getElementById('usuarioActivo');
+    let nombreActual = 'Invitado';
+
+    const mostrarUsuarioActivo = () => {
+      if (nombreActual === 'Invitado') {
+        return;
+      }
+
+      panelUsuario.classList.add('oculto');
+      usuarioActivo.textContent = `Usuario conectado: ${nombreActual}`;
+      usuarioActivo.classList.add('visible');
+    };
+
+    const registrarNombre = () => {
+      nombreActual = inputNombre.value.trim() || 'Invitado';
+      socket.emit('registrar-usuario', nombreActual);
+      mostrarUsuarioActivo();
+    };
+
+    botonNombre.addEventListener('click', registrarNombre);
+    inputNombre.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        registrarNombre();
+      }
+    });
+
+    socket.on('connect', () => {
+      document.getElementById('status').textContent = 'Conectado al servidor en tiempo real';
+      document.getElementById('status').className = 'conectado';
+      socket.emit('registrar-usuario', nombreActual);
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('status').textContent = 'Desconectado';
+      document.getElementById('status').className = 'desconectado';
+    });
+
+    socket.on('nuevo-evento', (evento) => {
+      const lista = document.getElementById('eventos');
+      const item = document.createElement('li');
+      const hora = new Date(evento.timestamp).toLocaleTimeString();
+      const payload = evento.payload || {};
+      const campos = Object.entries(payload).map(([clave, valor]) => `
+        <div class="campo">
+          <span class="campo-nombre">${clave}</span>
+          <span class="campo-valor">${typeof valor === 'object' ? JSON.stringify(valor) : valor}</span>
+        </div>
+      `).join('');
+
+      item.innerHTML = `
+        <div class="evento-header">
+          <span class="tipo">${evento.tipo}</span>
+          <span class="canal">${evento.canal}</span>
+        </div>
+        <div class="evento-body">
+          ${campos || '<div class="campo"><span class="campo-nombre">payload</span><span class="campo-valor">Sin datos</span></div>'}
+        </div>
+        <div class="evento-footer">Hora: ${hora} - Enviado a ${evento.clientes} cliente(s) - Usuario: ${nombreActual}</div>
+      `;
+
+      const placeholder = lista.querySelector('.vacio');
+      if (placeholder) {
+        placeholder.remove();
+      }
+
+      lista.insertBefore(item, lista.firstChild);
+    });
+  </script>
+</body>
+</html>

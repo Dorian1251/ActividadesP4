@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Usuario {
+  id            Int       @id @default(autoincrement())
+  nombre        String
+  email         String    @unique
+  rol           String
+  sesiones      Sesion[]
+  gruposCreados Grupo[]   @relation("OrganizadorGrupo")
+  recursos      Recurso[]
+  grupos        Grupo[]   @relation("IntegrantesGrupo")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Materia {
+  id        Int       @id @default(autoincrement())
+  nombre    String
+  codigo    String    @unique
+  docente   String
+  sesiones  Sesion[]
+  recursos  Recurso[]
+  grupos    Grupo[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Grupo {
+  id            Int       @id @default(autoincrement())
+  nombre        String
+  descripcion   String
+  materiaId     Int
+  organizadorId Int
+  materia       Materia   @relation(fields: [materiaId], references: [id])
+  organizador   Usuario   @relation("OrganizadorGrupo", fields: [organizadorId], references: [id])
+  integrantes   Usuario[] @relation("IntegrantesGrupo")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Sesion {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  descripcion String?
+  fecha       String
+  hora        String
+  modalidad   String
+  usuarioId   Int
+  materiaId   Int
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  materia     Materia  @relation(fields: [materiaId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Recurso {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  tipo        String
+  url         String
+  descripcion String?
+  usuarioId   Int
+  materiaId   Int
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  materia     Materia  @relation(fields: [materiaId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
