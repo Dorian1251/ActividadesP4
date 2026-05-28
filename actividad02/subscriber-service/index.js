@@ -1,3 +1,6 @@
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import Redis from 'ioredis';
 import path from 'path';
@@ -8,6 +11,37 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({
   path: path.resolve(__dirname, '../.env')
+});
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*' },
+  transports: ['polling', 'websocket']
+});
+const usuariosConectados = new Map();
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+io.on('connection', (socket) => {
+  console.log(`[Socket.io] Cliente conectado: ${socket.id}`);
+
+  socket.on('registrar-usuario', (nombre) => {
+    const nombreLimpio = String(nombre || '').trim() || 'Invitado';
+    usuariosConectados.set(socket.id, nombreLimpio);
+    console.log(`[Socket.io] Usuario registrado: ${nombreLimpio} (${socket.id})`);
+  });
+
+  socket.on('disconnect', () => {
+    const nombre = usuariosConectados.get(socket.id) || socket.id;
+    usuariosConectados.delete(socket.id);
+    console.log(`[Socket.io] Cliente desconectado: ${nombre}`);
+  });
+});
+
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Interfaz disponible en http://localhost:${PORT}`);
 });
 
 const PATTERN = 'study:*';
@@ -27,6 +61,16 @@ console.log('Esperando mensajes...\n');
 subscriber.on('pmessage', (pattern, channel, message) => {
   try {
     const evento = JSON.parse(message);
+    const clientes = io.engine.clientsCount;
+
+    io.emit('nuevo-evento', {
+      canal: channel,
+      clientes,
+      ...evento
+    });
+
+    console.log(`[Socket.io] Evento enviado a ${clientes} cliente(s)`);
+    
 
     console.log('====================================');
     console.log(`Patron: ${pattern}`);
