@@ -98,7 +98,7 @@ const swaggerSpec = {
       },
       post: {
         tags: ['Materias'],
-        summary: 'Crear materia',
+        summary: 'Crear materia y publicar materia.creada',
         requestBody: {
           required: true,
           content: {

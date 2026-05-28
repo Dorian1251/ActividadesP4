@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
 const includeRelaciones = {
@@ -112,6 +113,8 @@ const crearMateria = async (req, res, next) => {
         semestre: req.body.semestre
       }
     });
+
+    await publicarEvento(CHANNELS.MATERIA_CREADA, 'materia.creada', materia);
 
     res.status(201).json(materia);
   } catch (error) {

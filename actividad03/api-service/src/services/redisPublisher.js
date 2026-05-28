@@ -2,6 +2,7 @@ const Redis = require('ioredis');
 
 const CHANNELS = {
   SESION_CREADA: 'study:sesion:creada',
+  MATERIA_CREADA: 'study:materia:creada',
   USUARIO_REGISTRADO: 'study:usuario:registrado',
   USUARIO_UNIDO: 'study:usuario:unido',
   RECURSO_PUBLICADO: 'study:recurso:publicado'
