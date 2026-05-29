@@ -71,6 +71,35 @@ api-service/prisma/schema.prisma
 
 Redis Pub/Sub se utiliza como broker de mensajeria. Cuando ocurre una accion importante, la API publica un evento en un canal Redis.
 
+### Redis Cache
+
+Redis tambien se utiliza como cache para lecturas frecuentes. La cache guarda temporalmente respuestas de listados para reducir consultas repetidas a Supabase.
+
+Endpoints con cache:
+
+```text
+GET /api/usuarios
+GET /api/materias
+GET /api/grupos
+GET /api/sesiones
+GET /api/recursos
+```
+
+Cada respuesta se guarda con una clave que incluye los filtros de la consulta. Ejemplo:
+
+```text
+cache:sesiones:{"fecha":"2026-05-28","limit":"10","page":"1"}
+```
+
+La cache tiene TTL de 60 segundos. Ademas, cuando se ejecuta `POST`, `PUT` o `DELETE`, la API invalida las claves `cache:*` para evitar datos desactualizados.
+
+Los usos de Redis estan separados:
+
+```text
+cache:* -> cache de lecturas
+study:* -> canales Pub/Sub de eventos
+```
+
 ### Socket.io
 
 Socket.io permite enviar los eventos recibidos desde Redis a los navegadores conectados en tiempo real.
@@ -172,6 +201,34 @@ El servidor queda disponible en:
 ```text
 http://localhost:3000
 ```
+
+## Pruebas automatizadas
+
+La actividad incluye una suite basica con Jest y Supertest.
+
+Archivo principal:
+
+```text
+api-service/tests/api.validation.test.js
+```
+
+Ejecutar pruebas:
+
+```bash
+cd actividad03/api-service
+npm test
+```
+
+La suite valida:
+
+- `GET /` responde correctamente.
+- `POST /api/usuarios` responde 400 si falta `nombre`.
+- `POST /api/materias` responde 400 si falta `codigo`.
+- `POST /api/grupos` responde 400 si falta `materiaId`.
+- `POST /api/sesiones` responde 400 si falta `usuarioId`.
+- `POST /api/recursos` responde 400 si falta `url`.
+
+Estas pruebas usan mocks de Prisma y Redis para no depender de Supabase ni crear datos reales durante la ejecucion automatizada.
 
 ## Interfaces disponibles
 
@@ -287,6 +344,43 @@ Relaciones:
 
 - Pertenece a un usuario.
 - Pertenece a una materia.
+
+## Migraciones e indices justificados
+
+La base de datos fue creada inicialmente con Prisma y Supabase. Para documentar cambios estructurales se incluye una migracion SQL en:
+
+```text
+api-service/prisma/migrations/20260528130000_agregar_indices_consultas_frecuentes/migration.sql
+```
+
+Esta migracion agrega indices para optimizar consultas frecuentes de la API.
+
+| Tabla | Indice | Justificacion |
+|---|---|---|
+| `Usuario` | `rol` | Se usa en `GET /api/usuarios?rol=...` y `GET /api/usuarios/rol/:rol`. |
+| `Materia` | `semestre` | Se usa en `GET /api/materias?semestre=...` y `GET /api/materias/semestre/:semestre`. |
+| `Grupo` | `materiaId` | Se usa al filtrar grupos por materia. |
+| `Grupo` | `organizadorId` | Optimiza consultas relacionadas al organizador del grupo. |
+| `Sesion` | `fecha` | Se usa en `GET /api/sesiones/fecha/:fecha`. |
+| `Sesion` | `materiaId` | Se usa al listar sesiones por materia. |
+| `Sesion` | `usuarioId` | Optimiza la relacion entre sesiones y usuarios. |
+| `Recurso` | `tipo` | Se usa en `GET /api/recursos?tipo=...` y `GET /api/recursos/tipo/:tipo`. |
+| `Recurso` | `materiaId` | Optimiza recursos filtrados por materia. |
+| `Recurso` | `usuarioId` | Optimiza recursos filtrados o relacionados por usuario. |
+
+La migracion usa `CREATE INDEX IF NOT EXISTS`, por lo que se puede ejecutar de forma segura sin duplicar indices existentes.
+
+### Aplicar indices en Supabase
+
+Opcion recomendada:
+
+1. Abrir Supabase.
+2. Ir a `SQL Editor`.
+3. Copiar el contenido de `migration.sql`.
+4. Ejecutar el script.
+5. Verificar los indices en `Database -> Indexes`.
+
+No se recomienda usar `prisma migrate reset` porque elimina los datos de la base.
 
 ## Endpoints principales
 
@@ -518,6 +612,21 @@ Resultado esperado en navegador:
 ```text
 Tarjeta con canal study:sesion:creada y tipo sesion.creada
 ```
+### Por que Redis y no solo la base de datos
+
+Supabase PostgreSQL se utiliza para guardar datos persistentes, pero la base de datos no debe usarse como mecanismo principal de notificaciones en tiempo real. Si solo se usara la base de datos, los clientes tendrian que consultar constantemente si existen cambios nuevos, lo que se conoce como polling.
+
+Redis Pub/Sub permite que la API publique un evento justo cuando ocurre una accion importante, como crear una sesion o publicar un recurso. Los servicios suscriptores reciben el evento inmediatamente sin consultar repetidamente la base de datos.
+
+Esto mejora la arquitectura porque:
+
+- Desacopla la API de los suscriptores.
+- Reduce consultas innecesarias a Supabase.
+- Permite notificaciones en tiempo real.
+- Facilita que varios servicios reaccionen al mismo evento.
+- Mantiene a Supabase como sistema de persistencia y a Redis como sistema de mensajeria.
+
+En esta actividad, Supabase guarda la verdad de los datos y Redis comunica los cambios en tiempo real.
 
 ## Despliegue en Render
 

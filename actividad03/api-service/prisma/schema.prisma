@@ -22,6 +22,8 @@ model Usuario {
   grupos        Grupo[]   @relation("IntegrantesGrupo")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([rol])
 }
 
 model Materia {
@@ -35,6 +37,8 @@ model Materia {
   grupos    Grupo[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([semestre])
 }
 
 model Grupo {
@@ -48,6 +52,9 @@ model Grupo {
   integrantes   Usuario[] @relation("IntegrantesGrupo")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([materiaId])
+  @@index([organizadorId])
 }
 
 model Sesion {
@@ -63,6 +70,10 @@ model Sesion {
   materia     Materia  @relation(fields: [materiaId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([fecha])
+  @@index([materiaId])
+  @@index([usuarioId])
 }
 
 model Recurso {
@@ -77,4 +88,8 @@ model Recurso {
   materia     Materia  @relation(fields: [materiaId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([tipo])
+  @@index([materiaId])
+  @@index([usuarioId])
 }

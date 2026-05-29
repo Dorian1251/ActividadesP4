@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { borrarTodaCache, crearCacheKey, guardarCache, obtenerCache } = require('../services/cacheService');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
@@ -9,6 +10,14 @@ const includeRelaciones = {
 
 const obtenerSesiones = async (req, res, next) => {
   try {
+    const cacheKey = crearCacheKey('sesiones', req.query);
+    const cache = await obtenerCache(cacheKey);
+
+    if (cache) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cache);
+    }
+
     const { q, materia, fecha } = req.query;
     const { skip, take } = obtenerPaginacion(req.query);
     const where = limpiarDatos({
@@ -33,6 +42,8 @@ const obtenerSesiones = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    await guardarCache(cacheKey, sesiones);
+    res.set('X-Cache', 'MISS');
     res.json(sesiones);
   } catch (error) {
     next(error);
@@ -128,6 +139,7 @@ const crearSesion = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     await publicarEvento(CHANNELS.SESION_CREADA, 'sesion.creada', sesion);
 
     res.status(201).json(sesion);
@@ -164,6 +176,7 @@ const actualizarSesion = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     res.json(sesion);
   } catch (error) {
     next(error);
@@ -186,6 +199,7 @@ const eliminarSesion = async (req, res, next) => {
 
     await prisma.sesion.delete({ where: { id } });
 
+    await borrarTodaCache();
     res.json({ mensaje: `Sesion con id ${id} eliminada correctamente` });
   } catch (error) {
     next(error);

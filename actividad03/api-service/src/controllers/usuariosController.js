@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { borrarTodaCache, crearCacheKey, guardarCache, obtenerCache } = require('../services/cacheService');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
@@ -11,6 +12,14 @@ const includeRelaciones = {
 
 const obtenerUsuarios = async (req, res, next) => {
   try {
+    const cacheKey = crearCacheKey('usuarios', req.query);
+    const cache = await obtenerCache(cacheKey);
+
+    if (cache) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cache);
+    }
+
     const { q, rol } = req.query;
     const { skip, take } = obtenerPaginacion(req.query);
     const where = limpiarDatos({
@@ -26,6 +35,8 @@ const obtenerUsuarios = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    await guardarCache(cacheKey, usuarios);
+    res.set('X-Cache', 'MISS');
     res.json(usuarios);
   } catch (error) {
     next(error);
@@ -115,6 +126,7 @@ const crearUsuario = async (req, res, next) => {
       }
     });
 
+    await borrarTodaCache();
     await publicarEvento(CHANNELS.USUARIO_REGISTRADO, 'usuario.registrado', usuario);
 
     res.status(201).json(usuario);
@@ -146,6 +158,7 @@ const actualizarUsuario = async (req, res, next) => {
       })
     });
 
+    await borrarTodaCache();
     res.json(usuario);
   } catch (error) {
     next(error);
@@ -168,6 +181,7 @@ const eliminarUsuario = async (req, res, next) => {
 
     await prisma.usuario.delete({ where: { id } });
 
+    await borrarTodaCache();
     res.json({ mensaje: `Usuario con id ${id} eliminado correctamente` });
   } catch (error) {
     next(error);

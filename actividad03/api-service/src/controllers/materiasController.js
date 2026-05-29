@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { borrarTodaCache, crearCacheKey, guardarCache, obtenerCache } = require('../services/cacheService');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
@@ -10,6 +11,14 @@ const includeRelaciones = {
 
 const obtenerMaterias = async (req, res, next) => {
   try {
+    const cacheKey = crearCacheKey('materias', req.query);
+    const cache = await obtenerCache(cacheKey);
+
+    if (cache) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cache);
+    }
+
     const { q, semestre } = req.query;
     const { skip, take } = obtenerPaginacion(req.query);
     const where = limpiarDatos({
@@ -25,6 +34,8 @@ const obtenerMaterias = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    await guardarCache(cacheKey, materias);
+    res.set('X-Cache', 'MISS');
     res.json(materias);
   } catch (error) {
     next(error);
@@ -114,6 +125,7 @@ const crearMateria = async (req, res, next) => {
       }
     });
 
+    await borrarTodaCache();
     await publicarEvento(CHANNELS.MATERIA_CREADA, 'materia.creada', materia);
 
     res.status(201).json(materia);
@@ -146,6 +158,7 @@ const actualizarMateria = async (req, res, next) => {
       })
     });
 
+    await borrarTodaCache();
     res.json(materia);
   } catch (error) {
     next(error);
@@ -168,6 +181,7 @@ const eliminarMateria = async (req, res, next) => {
 
     await prisma.materia.delete({ where: { id } });
 
+    await borrarTodaCache();
     res.json({ mensaje: `Materia con id ${id} eliminada correctamente` });
   } catch (error) {
     next(error);

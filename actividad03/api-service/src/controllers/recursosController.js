@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { borrarTodaCache, crearCacheKey, guardarCache, obtenerCache } = require('../services/cacheService');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
@@ -9,6 +10,14 @@ const includeRelaciones = {
 
 const obtenerRecursos = async (req, res, next) => {
   try {
+    const cacheKey = crearCacheKey('recursos', req.query);
+    const cache = await obtenerCache(cacheKey);
+
+    if (cache) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cache);
+    }
+
     const { q, tipo } = req.query;
     const { skip, take } = obtenerPaginacion(req.query);
     const where = limpiarDatos({
@@ -24,6 +33,8 @@ const obtenerRecursos = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    await guardarCache(cacheKey, recursos);
+    res.set('X-Cache', 'MISS');
     res.json(recursos);
   } catch (error) {
     next(error);
@@ -106,6 +117,7 @@ const crearRecurso = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     await publicarEvento(CHANNELS.RECURSO_PUBLICADO, 'recurso.publicado', recurso);
 
     res.status(201).json(recurso);
@@ -141,6 +153,7 @@ const actualizarRecurso = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     res.json(recurso);
   } catch (error) {
     next(error);
@@ -163,6 +176,7 @@ const eliminarRecurso = async (req, res, next) => {
 
     await prisma.recurso.delete({ where: { id } });
 
+    await borrarTodaCache();
     res.json({ mensaje: `Recurso con id ${id} eliminado correctamente` });
   } catch (error) {
     next(error);

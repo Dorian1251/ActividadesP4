@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { borrarTodaCache, crearCacheKey, guardarCache, obtenerCache } = require('../services/cacheService');
 const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
 const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
 
@@ -10,6 +11,14 @@ const includeRelaciones = {
 
 const obtenerGrupos = async (req, res, next) => {
   try {
+    const cacheKey = crearCacheKey('grupos', req.query);
+    const cache = await obtenerCache(cacheKey);
+
+    if (cache) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cache);
+    }
+
     const { q, materia } = req.query;
     const { skip, take } = obtenerPaginacion(req.query);
     const where = limpiarDatos({
@@ -33,6 +42,8 @@ const obtenerGrupos = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    await guardarCache(cacheKey, grupos);
+    res.set('X-Cache', 'MISS');
     res.json(grupos);
   } catch (error) {
     next(error);
@@ -109,6 +120,7 @@ const crearGrupo = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     res.status(201).json(grupo);
   } catch (error) {
     next(error);
@@ -140,6 +152,7 @@ const actualizarGrupo = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     res.json(grupo);
   } catch (error) {
     next(error);
@@ -162,6 +175,7 @@ const eliminarGrupo = async (req, res, next) => {
 
     await prisma.grupo.delete({ where: { id } });
 
+    await borrarTodaCache();
     res.json({ mensaje: `Grupo con id ${id} eliminado correctamente` });
   } catch (error) {
     next(error);
@@ -192,6 +206,7 @@ const agregarIntegrante = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     const integrante = grupo.integrantes.find((usuario) => usuario.id === Number(req.body.usuarioId));
 
     await publicarEvento(CHANNELS.USUARIO_UNIDO, 'usuario.unido', {
@@ -228,6 +243,7 @@ const quitarIntegrante = async (req, res, next) => {
       include: includeRelaciones
     });
 
+    await borrarTodaCache();
     res.json(grupo);
   } catch (error) {
     next(error);
