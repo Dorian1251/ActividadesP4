@@ -6,9 +6,16 @@ const { iniciarSuscriptorRedis } = require('./services/redisSubscriber');
  
 dotenv.config();
  
+const corsOrigen = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((origen) => origen.trim())
+  : '*';
+ 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' },
+  cors: {
+    origin: corsOrigen,
+    methods: ['GET', 'POST']
+  },
   transports: ['polling', 'websocket']
 });
  
@@ -41,3 +48,4 @@ server.listen(PORT, () => {
   console.log(`Swagger disponible en http://localhost:${PORT}/api-docs`);
   console.log(`Notificaciones en http://localhost:${PORT}/notificaciones`);
 });
+
