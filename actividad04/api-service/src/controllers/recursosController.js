@@ -99,32 +99,33 @@ const obtenerRecursoPorId = async (req, res, next) => {
 
 const crearRecurso = async (req, res, next) => {
   try {
-    const campoFaltante = validarCampos(req.body, ['titulo', 'tipo', 'url', 'usuarioId', 'materiaId']);
-
+    const campoFaltante = validarCampos(req.body, ['titulo', 'tipo', 'url', 'materiaId']);
+ 
     if (campoFaltante) {
       return res.status(400).json({ error: `Falta el campo obligatorio: ${campoFaltante}` });
     }
-
+ 
     const recurso = await prisma.recurso.create({
       data: {
         titulo: req.body.titulo,
         tipo: req.body.tipo,
         url: req.body.url,
         descripcion: req.body.descripcion,
-        usuarioId: Number(req.body.usuarioId),
+        usuarioId: req.user.id,
         materiaId: Number(req.body.materiaId)
       },
       include: includeRelaciones
     });
-
+ 
     await borrarTodaCache();
     await publicarEvento(CHANNELS.RECURSO_PUBLICADO, 'recurso.publicado', recurso);
-
+ 
     res.status(201).json(recurso);
   } catch (error) {
     next(error);
   }
 };
+
 
 const actualizarRecurso = async (req, res, next) => {
   try {

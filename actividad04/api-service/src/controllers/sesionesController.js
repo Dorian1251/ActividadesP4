@@ -118,14 +118,13 @@ const crearSesion = async (req, res, next) => {
       'fecha',
       'hora',
       'modalidad',
-      'usuarioId',
       'materiaId'
     ]);
-
+ 
     if (campoFaltante) {
       return res.status(400).json({ error: `Falta el campo obligatorio: ${campoFaltante}` });
     }
-
+ 
     const sesion = await prisma.sesion.create({
       data: {
         titulo: req.body.titulo,
@@ -133,20 +132,21 @@ const crearSesion = async (req, res, next) => {
         fecha: req.body.fecha,
         hora: req.body.hora,
         modalidad: req.body.modalidad,
-        usuarioId: Number(req.body.usuarioId),
+        usuarioId: req.user.id,
         materiaId: Number(req.body.materiaId)
       },
       include: includeRelaciones
     });
-
+ 
     await borrarTodaCache();
     await publicarEvento(CHANNELS.SESION_CREADA, 'sesion.creada', sesion);
-
+ 
     res.status(201).json(sesion);
   } catch (error) {
     next(error);
   }
 };
+
 
 const actualizarSesion = async (req, res, next) => {
   try {

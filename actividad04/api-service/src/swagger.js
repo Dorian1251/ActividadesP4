@@ -1,9 +1,9 @@
 const swaggerSpec = {
   openapi: '3.0.0',
   info: {
-    title: 'StudySync API Actividad 03',
+    title: 'StudySync API Actividad 04',
     version: '1.0.0',
-    description: 'API REST con Express, Prisma, Supabase PostgreSQL, Redis Pub/Sub, Socket.io y Swagger.'
+    description: 'API REST segura con JWT, Swagger/OpenAPI, Express, Prisma, Supabase PostgreSQL, Redis Pub/Sub, Socket.io y medidas adicionales de seguridad.'
   },
   servers: [
     {
@@ -12,13 +12,74 @@ const swaggerSpec = {
     }
   ],
   tags: [
+    { name: 'Auth' },
     { name: 'Usuarios' },
     { name: 'Materias' },
     { name: 'Grupos' },
     { name: 'Sesiones' },
     { name: 'Recursos' }
   ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT'
+      }
+    }
+  },
+  security: [
+    {
+      bearerAuth: []
+    }
+  ],
   paths: {
+    '/auth/register': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Registrar usuario',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              example: {
+                nombre: 'Dorian Escobar',
+                email: 'dorian@example.com',
+                password: '123456',
+                rol: 'estudiante'
+              }
+            }
+          }
+        },
+        responses: {
+          201: { description: 'Usuario registrado correctamente' },
+          400: { description: 'Datos invalidos o email repetido' }
+        }
+      }
+    },
+    '/auth/login': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Iniciar sesion',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              example: {
+                email: 'dorian@example.com',
+                password: '123456'
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Login correcto con token JWT' },
+          401: { description: 'Credenciales invalidas' }
+        }
+      }
+    },
     '/api/usuarios': {
       get: {
         tags: ['Usuarios'],

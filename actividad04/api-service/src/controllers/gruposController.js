@@ -102,8 +102,7 @@ const crearGrupo = async (req, res, next) => {
     const campoFaltante = validarCampos(req.body, [
       'nombre',
       'descripcion',
-      'materiaId',
-      'organizadorId'
+      'materiaId'
     ]);
 
     if (campoFaltante) {
@@ -115,7 +114,7 @@ const crearGrupo = async (req, res, next) => {
         nombre: req.body.nombre,
         descripcion: req.body.descripcion,
         materiaId: Number(req.body.materiaId),
-        organizadorId: Number(req.body.organizadorId)
+        organizadorId: req.user.id
       },
       include: includeRelaciones
     });
@@ -190,30 +189,23 @@ const agregarIntegrante = async (req, res, next) => {
       return res.status(400).json({ error: 'ID invalido' });
     }
 
-    const campoFaltante = validarCampos(req.body, ['usuarioId']);
-
-    if (campoFaltante) {
-      return res.status(400).json({ error: `Falta el campo obligatorio: ${campoFaltante}` });
-    }
-
     const grupo = await prisma.grupo.update({
       where: { id },
       data: {
         integrantes: {
-          connect: { id: Number(req.body.usuarioId) }
+          connect: { id: req.user.id }
         }
       },
       include: includeRelaciones
     });
 
     await borrarTodaCache();
-    const integrante = grupo.integrantes.find((usuario) => usuario.id === Number(req.body.usuarioId));
 
     await publicarEvento(CHANNELS.USUARIO_UNIDO, 'usuario.unido', {
       grupoId: grupo.id,
       grupo: grupo.nombre,
-      usuarioId: Number(req.body.usuarioId),
-      usuario: integrante?.nombre || `Usuario ${req.body.usuarioId}`,
+      usuarioId: req.user.id,
+      usuario: req.user.nombre,
       organizador: grupo.organizador?.nombre,
       materia: grupo.materia?.nombre
     });
