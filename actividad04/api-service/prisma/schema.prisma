@@ -6,15 +6,16 @@
 generator client {
   provider = "prisma-client-js"
 }
-
+ 
 datasource db {
   provider = "postgresql"
 }
-
+ 
 model Usuario {
   id            Int       @id @default(autoincrement())
   nombre        String
   email         String    @unique
+  password      String
   rol           String
   sesiones      Sesion[]
   gruposCreados Grupo[]   @relation("OrganizadorGrupo")
@@ -22,10 +23,10 @@ model Usuario {
   grupos        Grupo[]   @relation("IntegrantesGrupo")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
+ 
   @@index([rol])
 }
-
+ 
 model Materia {
   id        Int       @id @default(autoincrement())
   nombre    String
@@ -37,10 +38,10 @@ model Materia {
   grupos    Grupo[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
+ 
   @@index([semestre])
 }
-
+ 
 model Grupo {
   id            Int       @id @default(autoincrement())
   nombre        String
@@ -52,11 +53,11 @@ model Grupo {
   integrantes   Usuario[] @relation("IntegrantesGrupo")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
+ 
   @@index([materiaId])
   @@index([organizadorId])
 }
-
+ 
 model Sesion {
   id          Int      @id @default(autoincrement())
   titulo      String
@@ -70,12 +71,12 @@ model Sesion {
   materia     Materia  @relation(fields: [materiaId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
+ 
   @@index([fecha])
   @@index([materiaId])
   @@index([usuarioId])
 }
-
+ 
 model Recurso {
   id          Int      @id @default(autoincrement())
   titulo      String
@@ -88,7 +89,7 @@ model Recurso {
   materia     Materia  @relation(fields: [materiaId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
+ 
   @@index([tipo])
   @@index([materiaId])
   @@index([usuarioId])
