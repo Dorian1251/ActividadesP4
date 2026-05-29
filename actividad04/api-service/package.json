@@ -1,0 +1,39 @@
+{
+  "name": "api-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "build": "prisma generate",
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "jest --runInBand"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.2.0",
+    "ioredis": "^5.11.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.21.0",
+    "socket.io": "^4.8.3",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "jest": "^30.4.2",
+    "prisma": "^7.8.0",
+    "supertest": "^7.2.2"
+  }
+}
