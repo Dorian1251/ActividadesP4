@@ -97,6 +97,12 @@ const login = async (req, res, next) => {
     if (!usuario) {
       return res.status(401).json({ error: 'Credenciales invalidas' });
     }
+
+    if (!usuario.password) {
+      return res.status(401).json({
+        error: 'Credenciales invalidas. El usuario debe registrarse nuevamente para habilitar acceso con JWT'
+      });
+    }
  
     const passwordValido = await bcrypt.compare(password, usuario.password);
  

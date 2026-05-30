@@ -1,10 +1,11 @@
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
-const app = require('./app');
-const { iniciarSuscriptorRedis } = require('./services/redisSubscriber');
 
 dotenv.config();
+
+const app = require('./app');
+const { iniciarSuscriptorRedis } = require('./services/redisSubscriber');
 
 const server = http.createServer(app);
 const io = new Server(server, {
