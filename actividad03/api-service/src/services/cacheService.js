@@ -38,7 +38,14 @@ const obtenerCache = async (key) => {
     return null;
   }
 
-  const data = await redis.get(key);
+  let data;
+
+  try {
+    data = await redis.get(key);
+  } catch (error) {
+    console.error(`[Redis Cache] No se pudo leer ${key}:`, error.message);
+    return null;
+  }
 
   if (!data) {
     console.log(`[Redis Cache] MISS ${key}`);
@@ -56,8 +63,12 @@ const guardarCache = async (key, value, ttl = DEFAULT_TTL_SECONDS) => {
     return;
   }
 
-  await redis.set(key, JSON.stringify(value), 'EX', ttl);
-  console.log(`[Redis Cache] SET ${key} (${ttl}s)`);
+  try {
+    await redis.set(key, JSON.stringify(value), 'EX', ttl);
+    console.log(`[Redis Cache] SET ${key} (${ttl}s)`);
+  } catch (error) {
+    console.error(`[Redis Cache] No se pudo guardar ${key}:`, error.message);
+  }
 };
 
 const borrarCachePorPatron = async (pattern) => {
@@ -71,12 +82,17 @@ const borrarCachePorPatron = async (pattern) => {
   let eliminadas = 0;
 
   do {
-    const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-    cursor = nextCursor;
+    try {
+      const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
 
-    if (keys.length > 0) {
-      eliminadas += keys.length;
-      await redis.del(...keys);
+      if (keys.length > 0) {
+        eliminadas += keys.length;
+        await redis.del(...keys);
+      }
+    } catch (error) {
+      console.error(`[Redis Cache] No se pudo invalidar ${pattern}:`, error.message);
+      return;
     }
   } while (cursor !== '0');
 
