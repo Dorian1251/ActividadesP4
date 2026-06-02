@@ -1,24 +1,28 @@
-# Actividad 04 - JWT + Swagger
+# Actividad 04 - StudySync JWT + Swagger + Frontend + Asistencia QR
 
-## Seguridad y Documentacion
+## Descripcion
 
-Esta actividad agrega autenticacion, autorizacion y documentacion profesional a la API de StudySync.
+Esta actividad agrega seguridad, documentacion profesional y una interfaz web a StudySync.
 
-La API ahora protege sus rutas privadas usando JSON Web Tokens (JWT). Los usuarios deben registrarse, iniciar sesion y enviar un token tipo Bearer para poder consultar, crear, actualizar o eliminar recursos protegidos.
+El sistema permite que los usuarios se registren, inicien sesion con JWT, usen rutas privadas, administren entidades desde un panel Bootstrap y registren asistencia a sesiones mediante codigo QR.
 
-Tambien se documenta la API con Swagger/OpenAPI para probar los endpoints desde el navegador.
+La API mantiene la integracion con Supabase PostgreSQL, Prisma ORM, Redis Upstash, Socket.io y Swagger/OpenAPI.
 
-## Objetivo
+## Funcionalidades implementadas
 
-Implementar una API REST segura con:
-
-- Registro de usuarios.
-- Login con contrasena hasheada usando bcrypt.
-- Access token JWT para rutas privadas.
-- Refresh token para renovar el access token.
+- Registro de usuarios con contrasena hasheada usando `bcryptjs`.
+- Login con access token JWT y refresh token.
 - Logout con blacklist de tokens en Redis usando TTL.
-- Swagger con autenticacion Bearer.
-- Medidas adicionales de seguridad: Helmet, CORS, Rate Limiting, validaciones y sanitizacion de respuestas.
+- Proteccion de rutas privadas con Bearer Token.
+- Swagger/OpenAPI con boton `Authorize`.
+- Seguridad adicional con Helmet, CORS, Rate Limiting, validaciones y sanitizacion de respuestas.
+- Frontend web con Bootstrap.
+- Menu para entidades: usuarios, materias, grupos, sesiones y recursos.
+- Control de usuario propio: cada usuario solo puede ver, editar o eliminar su propio perfil.
+- Control de asistencia por QR.
+- Marcar y desmarcar asistencia.
+- Notificaciones en tiempo real con Redis Pub/Sub y Socket.io.
+- Infrastructure as Code con CloudFormation para S3, DynamoDB y SSM.
 
 ## Tecnologias utilizadas
 
@@ -26,14 +30,46 @@ Implementar una API REST segura con:
 - Express
 - Prisma ORM
 - Supabase PostgreSQL
+- Redis Upstash
+- Socket.io
 - JSON Web Token
 - bcryptjs
-- Redis Upstash
+- qrcode
 - Swagger/OpenAPI
+- Bootstrap
 - Helmet
 - CORS
 - express-rate-limit
 - express-validator
+- CloudFormation
+- LocalStack
+
+## Estructura principal
+
+```text
+actividad04/
+├── api-service/
+│   ├── prisma/
+│   │   └── schema.prisma
+│   ├── public/
+│   │   ├── login.html
+│   │   ├── register.html
+│   │   ├── index.html
+│   │   ├── qr.html
+│   │   ├── asistencia.html
+│   │   └── *.js
+│   ├── src/
+│   │   ├── controllers/
+│   │   ├── middlewares/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── app.js
+│   │   ├── server.js
+│   │   └── swagger.js
+│   └── package.json
+└── cloudformation/
+    └── template.yaml
+```
 
 ## Variables de entorno
 
@@ -47,21 +83,23 @@ Variables necesarias:
 
 ```env
 DATABASE_URL=postgresql://usuario:password@host:5432/postgres
-REDIS_URL=redis://default:password@host:6379
+REDIS_URL=rediss://default:password@host.upstash.io:6379
 JWT_SECRET=clave_secreta_larga_y_segura_2026
 JWT_EXPIRES_IN=1h
 JWT_REFRESH_EXPIRES_IN=7d
 PORT=3000
 CORS_ORIGIN=http://localhost:3000
+PUBLIC_APP_URL=http://localhost:3000
 ```
 
 Notas:
 
-- `JWT_SECRET` se usa para firmar y verificar tokens.
-- `JWT_EXPIRES_IN` define la duracion del access token.
-- `JWT_REFRESH_EXPIRES_IN` define la duracion del refresh token.
-- `REDIS_URL` se usa para Pub/Sub, cache y blacklist de tokens.
-- `.env` no debe subirse a GitHub.
+- `DATABASE_URL` conecta la API con Supabase.
+- `REDIS_URL` usa Upstash para Pub/Sub, cache y blacklist de tokens.
+- `JWT_SECRET` firma y verifica los tokens.
+- `PUBLIC_APP_URL` se usa para generar enlaces correctos en los QR.
+- En Render, `PUBLIC_APP_URL` debe ser la URL publica del servicio.
+- El archivo `.env` no debe subirse a GitHub.
 
 ## Ejecutar localmente
 
@@ -77,16 +115,22 @@ Instalar dependencias:
 npm install
 ```
 
-Actualizar Supabase con Prisma:
+Generar Prisma Client:
+
+```bash
+npx prisma generate
+```
+
+Sincronizar Supabase:
 
 ```bash
 npx prisma db push
 ```
 
-Generar Prisma Client:
+Si Prisma muestra advertencia por indice unico de `codigoAsistencia`:
 
 ```bash
-npx prisma generate
+npx prisma db push --accept-data-loss
 ```
 
 Iniciar servidor:
@@ -99,15 +143,46 @@ URLs principales:
 
 ```text
 http://localhost:3000
+http://localhost:3000/static/login.html
+http://localhost:3000/static/register.html
+http://localhost:3000/static/index.html
 http://localhost:3000/api-docs
 http://localhost:3000/notificaciones
 ```
 
-## Flujo de autenticacion
+## Frontend web
 
-### 1. Registro
+El frontend esta en:
 
-Endpoint:
+```text
+actividad04/api-service/public
+```
+
+Paginas principales:
+
+| Pagina | Uso |
+|---|---|
+| `/static/register.html` | Registro de usuario |
+| `/static/login.html` | Inicio de sesion |
+| `/static/index.html` | Panel principal Bootstrap |
+| `/static/qr.html` | Generar/mostrar QR de una sesion |
+| `/static/asistencia.html` | Marcar o desmarcar asistencia |
+| `/notificaciones` | Vista de eventos Socket.io |
+
+El panel principal permite administrar:
+
+- Mi perfil.
+- Materias.
+- Grupos.
+- Sesiones.
+- Recursos.
+- QR de asistencia.
+- Asistentes por sesion.
+- Notificaciones en tiempo real.
+
+## Autenticacion JWT
+
+### Registro
 
 ```text
 POST /auth/register
@@ -124,17 +199,9 @@ Body:
 }
 ```
 
-Resultado esperado:
+La contrasena se guarda hasheada con `bcryptjs`.
 
-```text
-201 Created
-```
-
-La contrasena se guarda hasheada con bcrypt. La respuesta no expone el campo `password`.
-
-### 2. Login
-
-Endpoint:
+### Login
 
 ```text
 POST /auth/login
@@ -149,7 +216,7 @@ Body:
 }
 ```
 
-Resultado esperado:
+Respuesta:
 
 ```json
 {
@@ -162,23 +229,9 @@ Resultado esperado:
 }
 ```
 
-El `token` se usa para acceder a rutas privadas.
+### Rutas privadas
 
-El `refreshToken` se usa para pedir un nuevo access token sin volver a escribir email y contrasena.
-
-### 3. Acceso a rutas privadas
-
-Todas las rutas que empiezan con `/api` estan protegidas:
-
-```text
-GET    /api/usuarios
-POST   /api/materias
-POST   /api/sesiones
-PUT    /api/sesiones/:id
-DELETE /api/sesiones/:id
-```
-
-Header requerido:
+Todas las rutas `/api` requieren:
 
 ```text
 Authorization: Bearer ACCESS_TOKEN
@@ -192,15 +245,7 @@ Sin token:
 }
 ```
 
-Con token invalido:
-
-```json
-{
-  "error": "Token invalido"
-}
-```
-
-Con token expirado:
+Token expirado:
 
 ```json
 {
@@ -210,9 +255,7 @@ Con token expirado:
 
 ## Refresh token
 
-El access token dura poco tiempo. Si expira, el usuario puede renovar su sesion con el refresh token.
-
-Endpoint:
+Permite renovar el access token sin volver a ingresar email y contrasena.
 
 ```text
 POST /auth/refresh
@@ -222,11 +265,11 @@ Body:
 
 ```json
 {
-  "refreshToken": "PEGAR_REFRESH_TOKEN_AQUI"
+  "refreshToken": "PEGAR_REFRESH_TOKEN"
 }
 ```
 
-Resultado esperado:
+Respuesta:
 
 ```json
 {
@@ -237,19 +280,7 @@ Resultado esperado:
 }
 ```
 
-Si el refresh token expira:
-
-```json
-{
-  "error": "Refresh token expirado, inicia sesion nuevamente"
-}
-```
-
-## Logout con blacklist en Redis
-
-Un JWT normalmente sigue siendo valido hasta que expire. Para cerrar sesion antes de la expiracion, el token se guarda en Redis dentro de una blacklist.
-
-Endpoint:
+## Logout con blacklist Redis
 
 ```text
 POST /auth/logout
@@ -261,13 +292,7 @@ Header:
 Authorization: Bearer ACCESS_TOKEN
 ```
 
-Resultado esperado:
-
-```json
-{
-  "mensaje": "Logout correcto. Token invalidado hasta su expiracion"
-}
-```
+El token se guarda en Redis con TTL hasta su expiracion natural.
 
 Luego, si se intenta usar el mismo token:
 
@@ -277,12 +302,220 @@ Luego, si se intenta usar el mismo token:
 }
 ```
 
-Redis guarda el token con TTL. Esto significa que la clave se elimina automaticamente cuando el token ya habria expirado.
+## Control de usuario propio
 
-Ejemplo conceptual:
+La entidad `Usuarios` funciona como `Mi perfil`.
+
+Reglas:
+
+- El usuario solo ve su propio perfil.
+- El usuario solo puede actualizar su propio usuario.
+- El usuario solo puede eliminar su propia cuenta.
+- No puede editar ni eliminar otros usuarios aunque use Swagger o Thunder Client.
+- Crear usuarios desde `/api/usuarios` esta bloqueado; se debe usar `/auth/register`.
+
+Ejemplo de proteccion:
 
 ```text
-blacklist:jwt:TOKEN -> TTL hasta la expiracion del token
+PUT /api/usuarios/99
+```
+
+Si el token pertenece al usuario 4:
+
+```json
+{
+  "error": "Solo puedes actualizar tu propio usuario"
+}
+```
+
+## Entidades principales
+
+### Materias
+
+```text
+GET    /api/materias
+POST   /api/materias
+GET    /api/materias/:id
+PUT    /api/materias/:id
+DELETE /api/materias/:id
+```
+
+Ejemplo:
+
+```json
+{
+  "nombre": "Programacion IV",
+  "codigo": "PROG4-A04",
+  "docente": "Ing. Ramirez",
+  "semestre": "4"
+}
+```
+
+### Sesiones
+
+```text
+GET    /api/sesiones
+POST   /api/sesiones
+GET    /api/sesiones/:id
+PUT    /api/sesiones/:id
+DELETE /api/sesiones/:id
+```
+
+Ejemplo:
+
+```json
+{
+  "titulo": "Sesion segura con JWT",
+  "descripcion": "Prueba Actividad 04",
+  "fecha": "2026-06-01",
+  "hora": "18:00",
+  "modalidad": "virtual",
+  "materiaId": 1
+}
+```
+
+No se envia `usuarioId`. La API usa:
+
+```js
+usuarioId = req.user.id
+```
+
+### Grupos
+
+```text
+GET    /api/grupos
+POST   /api/grupos
+POST   /api/grupos/:id/integrantes
+PUT    /api/grupos/:id
+DELETE /api/grupos/:id
+```
+
+### Recursos
+
+```text
+GET    /api/recursos
+POST   /api/recursos
+PUT    /api/recursos/:id
+DELETE /api/recursos/:id
+```
+
+## Control de asistencia con QR
+
+La asistencia se registra por usuario y sesion.
+
+Modelo:
+
+```prisma
+model Asistencia {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  sesionId  Int
+  fechaHora DateTime @default(now())
+
+  @@unique([usuarioId, sesionId])
+}
+```
+
+La restriccion unica evita que un usuario marque dos veces la misma sesion.
+
+### Endpoints de asistencia
+
+Generar QR:
+
+```text
+GET /api/sesiones/:id/qr
+```
+
+Ver mi asistencia:
+
+```text
+GET /api/sesiones/:id/asistencia/mia
+```
+
+Marcar asistencia:
+
+```text
+POST /api/sesiones/:id/asistencia
+```
+
+Body:
+
+```json
+{
+  "codigo": "CODIGO_DEL_QR"
+}
+```
+
+Desmarcar asistencia:
+
+```text
+DELETE /api/sesiones/:id/asistencia
+```
+
+Listar asistentes:
+
+```text
+GET /api/sesiones/:id/asistencias
+```
+
+### Flujo QR
+
+1. Iniciar sesion.
+2. Entrar al panel.
+3. Ir a `Sesiones`.
+4. Presionar `QR`.
+5. Mostrar o escanear el codigo QR.
+6. El QR abre:
+
+```text
+/static/asistencia.html?sesionId=ID&codigo=CODIGO
+```
+
+7. Si el usuario ya inicio sesion, la asistencia se marca automaticamente.
+8. Desde la misma pantalla puede desmarcar asistencia.
+
+Para celular, en Render configurar:
+
+```env
+PUBLIC_APP_URL=https://tu-servicio.onrender.com
+```
+
+## Redis Pub/Sub + Socket.io
+
+Eventos publicados:
+
+```text
+usuario.registrado
+materia.creada
+sesion.creada
+recurso.publicado
+usuario.unido
+asistencia.marcada
+asistencia.desmarcada
+```
+
+Canales usados:
+
+```text
+study:usuario:registrado
+study:materia:creada
+study:sesion:creada
+study:recurso:publicado
+study:usuario:unido
+study:asistencia:marcada
+study:asistencia:desmarcada
+```
+
+El suscriptor escucha:
+
+```text
+study:*
+```
+
+Cuando llega un evento, Socket.io lo envia al navegador con:
+
+```text
+nuevo-evento
 ```
 
 ## Swagger/OpenAPI
@@ -293,54 +526,45 @@ Swagger esta disponible en:
 http://localhost:3000/api-docs
 ```
 
-La documentacion incluye:
+Incluye:
 
-- Endpoints de autenticacion.
-- Endpoints privados de las entidades.
-- Parametros.
-- Body esperado.
-- Respuestas posibles.
-- Ejemplos.
-- Autenticacion Bearer.
+- Auth.
+- Usuarios.
+- Materias.
+- Grupos.
+- Sesiones.
+- Asistencias.
+- Recursos.
+- Bearer Auth.
+- Ejemplos de body.
+- Respuestas esperadas.
 
-### Probar Bearer Token en Swagger
+### Probar token en Swagger
 
 1. Ejecutar `POST /auth/login`.
-2. Copiar el valor de `token`.
+2. Copiar `token`.
 3. Hacer clic en `Authorize`.
 4. Pegar el token.
 
-Segun la configuracion de Swagger, puede pegarse solo el token:
-
-```text
-eyJhbGciOiJIUzI1NiIsInR5cCI6...
-```
-
-Si no funciona, pegarlo con Bearer:
-
-```text
-Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...
-```
-
-Nunca debe quedar duplicado:
+Evitar duplicar Bearer:
 
 ```text
 Bearer Bearer TOKEN
 ```
 
-## Medidas de seguridad adicionales
+Debe ser solo:
+
+```text
+Bearer TOKEN
+```
+
+o solo el token si Swagger ya agrega Bearer automaticamente.
+
+## Medidas de seguridad
 
 ### Helmet
 
-Helmet agrega cabeceras HTTP de seguridad:
-
-```js
-app.use(helmet());
-```
-
-Ayuda contra riesgos comunes como clickjacking, sniffing de contenido y configuraciones inseguras del navegador.
-
-Cabeceras esperadas:
+Agrega cabeceras HTTP de seguridad:
 
 ```text
 x-frame-options
@@ -351,32 +575,28 @@ strict-transport-security
 
 ### CORS
 
-CORS controla que dominios pueden llamar a la API:
-
-```js
-app.use(cors({
-  origin: corsOrigen,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-```
-
-En produccion no se recomienda usar `origin: '*'`. Se debe configurar:
+Controla que dominios pueden acceder a la API:
 
 ```env
-CORS_ORIGIN=https://tu-frontend.com
+CORS_ORIGIN=http://localhost:3000
 ```
 
-### Rate Limiting
+En Render:
 
-La API limita peticiones por IP para reducir abuso:
+```env
+CORS_ORIGIN=https://tu-servicio.onrender.com
+```
+
+### Rate limiting
+
+Limites:
 
 ```text
 General: 150 peticiones cada 15 minutos
 Auth: 25 intentos cada 15 minutos
 ```
 
-Si se supera el limite:
+Si se supera:
 
 ```json
 {
@@ -384,19 +604,11 @@ Si se supera el limite:
 }
 ```
 
-Para login/register:
-
-```json
-{
-  "error": "Demasiados intentos de autenticacion. Intente nuevamente mas tarde."
-}
-```
-
 ### Validacion de datos
 
-Las rutas usan `express-validator` para validar body, params y query antes de llegar al controlador.
+Se usa `express-validator` para validar body, params y query antes de llegar a los controladores.
 
-Ejemplo de error:
+Ejemplo:
 
 ```json
 {
@@ -410,256 +622,91 @@ Ejemplo de error:
 }
 ```
 
-### Sanitizacion de respuestas
+### Sanitizacion
 
 El middleware `sanitizeResponseMiddleware` elimina `password` de cualquier respuesta JSON.
 
-Esto evita exponer contrasenas hasheadas accidentalmente.
+## Infrastructure as Code
 
-## Infrastructure as Code (IaC)
-
-Infrastructure as Code permite definir infraestructura mediante archivos declarativos en lugar de crear recursos manualmente desde la consola.
-
-En esta actividad se agrego el archivo:
+Archivo:
 
 ```text
 cloudformation/template.yaml
 ```
 
-Este template de CloudFormation define recursos AWS para StudySync:
+Recursos definidos:
 
 | Recurso | Servicio | Uso |
 |---|---|---|
-| `StudySyncBucket` | S3 | Almacenamiento de materiales o archivos de estudio. |
-| `TablaEventos` | DynamoDB | Registro de eventos o auditoria de sesiones con TTL automatico. |
-| `ParametroApiUrl` | SSM Parameter Store | Parametro centralizado con la URL base de la API. |
-
-El template usa el parametro `Ambiente` para reutilizar el mismo YAML en desarrollo y produccion:
-
-```text
-Ambiente=dev
-Ambiente=staging
-Ambiente=prod
-```
-
-Tambien usa el parametro `ApiUrl` para configurar CORS en S3 y guardar la URL de la API en SSM:
-
-```text
-ApiUrl=http://localhost:3000
-ApiUrl=https://tu-api.onrender.com
-```
-
-Esto evita ClickOps porque los recursos quedan documentados, versionados en Git y se pueden recrear con un comando.
+| `StudySyncBucket` | S3 | Archivos o materiales de estudio |
+| `TablaEventos` | DynamoDB | Auditoria/eventos con TTL |
+| `ParametroApiUrl` | SSM Parameter Store | URL centralizada de la API |
 
 ### Probar con LocalStack
 
-LocalStack simula AWS localmente usando Docker. Sirve para validar el template sin generar costos.
-
-Crear el stack local:
-
 ```bash
-awslocal cloudformation create-stack --stack-name studysync-dev --template-body file://cloudformation/template.yaml --parameters ParameterKey=Ambiente,ParameterValue=dev ParameterKey=ApiUrl,ParameterValue=http://localhost:3000
+aws --profile localstack --endpoint-url=http://localhost:4566 cloudformation create-stack --stack-name studysync-dev --template-body file://cloudformation/template.yaml --parameters ParameterKey=Ambiente,ParameterValue=dev ParameterKey=ApiUrl,ParameterValue=http://localhost:3000
 ```
 
-Verificar estado:
+Ver estado:
 
 ```bash
-awslocal cloudformation describe-stacks --stack-name studysync-dev
+aws --profile localstack --endpoint-url=http://localhost:4566 cloudformation describe-stacks --stack-name studysync-dev
 ```
 
 Resultado esperado:
 
 ```text
-StackStatus: CREATE_COMPLETE
+CREATE_COMPLETE
 ```
 
-Ver recursos creados:
+## Despliegue en Render
 
-```bash
-awslocal s3 ls
-awslocal dynamodb list-tables
-awslocal ssm get-parameter --name /studysync/dev/api-url
-```
-
-### Desplegar en AWS real
-
-El mismo `template.yaml` funciona en AWS real. Solo cambia el comando.
-
-Configurar credenciales:
-
-```bash
-aws configure
-```
-
-Crear stack en AWS:
-
-```bash
-aws cloudformation create-stack --stack-name studysync-prod --template-body file://cloudformation/template.yaml --parameters ParameterKey=Ambiente,ParameterValue=prod ParameterKey=ApiUrl,ParameterValue=https://tu-api.onrender.com --region us-east-1
-```
-
-Verificar estado:
-
-```bash
-aws cloudformation describe-stacks --stack-name studysync-prod --region us-east-1
-```
-
-Eliminar recursos para evitar costos:
-
-```bash
-aws cloudformation delete-stack --stack-name studysync-prod --region us-east-1
-```
-
-### Evidencias IaC
-
-Para defender este punto se recomienda mostrar:
-
-- Archivo `cloudformation/template.yaml`.
-- Stack en `CREATE_COMPLETE`.
-- Bucket S3 creado.
-- Tabla DynamoDB creada.
-- Parametro SSM creado.
-- Comando usado en LocalStack o AWS real.
-
-## Prueba completa desde cero
-
-### 1. Registrar usuario
+Configuracion:
 
 ```text
-POST /auth/register
+Root Directory: actividad04/api-service
+Build Command: npm install && npx prisma generate
+Start Command: npm start
 ```
 
-```json
-{
-  "nombre": "Dorian Escobar",
-  "email": "dorian04@gmail.com",
-  "password": "123456",
-  "rol": "estudiante"
-}
+Variables:
+
+```env
+DATABASE_URL=postgresql://...
+REDIS_URL=rediss://...
+JWT_SECRET=clave_secreta_larga_y_segura_2026
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+CORS_ORIGIN=https://tu-servicio.onrender.com
+PUBLIC_APP_URL=https://tu-servicio.onrender.com
+PORT=3000
 ```
 
-### 2. Login
+URLs:
 
 ```text
-POST /auth/login
+https://tu-servicio.onrender.com
+https://tu-servicio.onrender.com/static/login.html
+https://tu-servicio.onrender.com/static/register.html
+https://tu-servicio.onrender.com/static/index.html
+https://tu-servicio.onrender.com/api-docs
 ```
 
-```json
-{
-  "email": "dorian04@gmail.com",
-  "password": "123456"
-}
-```
+## Prueba completa
 
-Guardar:
-
-```text
-ACCESS_TOKEN
-REFRESH_TOKEN
-```
-
-### 3. Probar ruta privada sin token
-
-```text
-GET /api/sesiones
-```
-
-Resultado:
-
-```text
-401 Token requerido
-```
-
-### 4. Autorizar Swagger
-
-Pegar el access token en `Authorize`.
-
-### 5. Crear materia
-
-```text
-POST /api/materias
-```
-
-```json
-{
-  "nombre": "Programacion IV",
-  "codigo": "PROG4-A04",
-  "docente": "Ing. Ramirez",
-  "semestre": "4"
-}
-```
-
-### 6. Crear sesion segura
-
-```text
-POST /api/sesiones
-```
-
-```json
-{
-  "titulo": "Sesion segura con JWT",
-  "descripcion": "Prueba Actividad 04",
-  "fecha": "2026-06-01",
-  "hora": "18:00",
-  "modalidad": "virtual",
-  "materiaId": 1
-}
-```
-
-No se envia `usuarioId`. La API usa el usuario autenticado:
-
-```js
-usuarioId = req.user.id
-```
-
-### 7. Renovar token
-
-```text
-POST /auth/refresh
-```
-
-```json
-{
-  "refreshToken": "PEGAR_REFRESH_TOKEN"
-}
-```
-
-Resultado:
-
-```text
-200 Token renovado correctamente
-```
-
-### 8. Logout
-
-```text
-POST /auth/logout
-```
-
-Header:
-
-```text
-Authorization: Bearer ACCESS_TOKEN
-```
-
-Resultado:
-
-```text
-200 Logout correcto
-```
-
-### 9. Probar token invalidado
-
-Con el mismo token anterior:
-
-```text
-GET /api/sesiones
-```
-
-Resultado:
-
-```text
-401 Token invalidado. Inicia sesion nuevamente
-```
+1. Abrir `/static/register.html`.
+2. Registrar usuario.
+3. Iniciar sesion en `/static/login.html`.
+4. Crear materia.
+5. Crear sesion seleccionando materia desde el combobox.
+6. Presionar `QR` en una sesion.
+7. Escanear el QR desde celular.
+8. Iniciar sesion en el celular si hace falta.
+9. La asistencia se marca automaticamente.
+10. Presionar `Desmarcar asistencia` para quitarla.
+11. Volver al panel y presionar `Asistentes`.
+12. Ver evento en notificaciones Socket.io.
 
 ## Requisitos estrategicos
 
@@ -669,29 +716,11 @@ Resultado:
 | Logout con blacklist en Redis usando TTL | Implementado |
 | Swagger con autenticacion Bearer | Implementado |
 | Rate limiting + Helmet | Implementado |
-
-## Despliegue en Render
-
-Configuracion recomendada:
-
-```text
-Root Directory: actividad04/api-service
-Build Command: npm install && npm run build
-Start Command: npm start
-```
-
-Variables de entorno en Render:
-
-```env
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-JWT_SECRET=clave_secreta_larga_y_segura_2026
-JWT_EXPIRES_IN=1h
-JWT_REFRESH_EXPIRES_IN=7d
-CORS_ORIGIN=https://tu-dominio.com
-PORT=3000
-```
+| Frontend funcional | Implementado |
+| Asistencia por QR | Implementado |
+| Notificaciones en tiempo real | Implementado |
+| IaC con CloudFormation | Implementado |
 
 ## Conclusion
 
-La Actividad 04 convierte StudySync en una API segura y documentada. JWT protege las rutas privadas, bcrypt protege las contrasenas, refresh token mantiene sesiones sin pedir credenciales nuevamente, Redis permite invalidar tokens con TTL en logout y Swagger permite probar la API completa desde `/api-docs`.
+StudySync ahora cuenta con autenticacion JWT, documentacion Swagger, frontend Bootstrap, proteccion de rutas, control de usuario propio, asistencia por QR, eventos en tiempo real con Redis/Socket.io e infraestructura declarativa con CloudFormation. Esto convierte la API en un sistema mas completo, seguro y facil de demostrar en vivo.
