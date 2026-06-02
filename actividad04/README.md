@@ -1,175 +1,74 @@
-# Actividad 03 - StudySync Integrado
+# Actividad 04 - JWT + Swagger
 
-## Descripcion
+## Seguridad y Documentacion
 
-Esta actividad integra los entregables anteriores de StudySync en una arquitectura funcional con persistencia real y comunicacion en tiempo real.
+Esta actividad agrega autenticacion, autorizacion y documentacion profesional a la API de StudySync.
 
-La API REST ya no guarda los datos en arreglos en memoria. Ahora utiliza Prisma ORM para conectarse a una base de datos PostgreSQL en Supabase. Ademas, cuando se crean datos importantes, la API publica eventos en Redis Pub/Sub usando Upstash. Esos eventos son recibidos por un suscriptor Redis integrado y enviados al navegador mediante Socket.io.
+La API ahora protege sus rutas privadas usando JSON Web Tokens (JWT). Los usuarios deben registrarse, iniciar sesion y enviar un token tipo Bearer para poder consultar, crear, actualizar o eliminar recursos protegidos.
+
+Tambien se documenta la API con Swagger/OpenAPI para probar los endpoints desde el navegador.
 
 ## Objetivo
 
-Demostrar una arquitectura donde:
+Implementar una API REST segura con:
 
-- El cliente realiza peticiones HTTP a una API REST.
-- La API guarda datos reales en Supabase PostgreSQL.
-- La API publica eventos en Redis Pub/Sub.
-- El suscriptor recibe eventos en tiempo real.
-- Socket.io muestra las notificaciones en una interfaz web sin recargar la pagina.
+- Registro de usuarios.
+- Login con contrasena hasheada usando bcrypt.
+- Access token JWT para rutas privadas.
+- Refresh token para renovar el access token.
+- Logout con blacklist de tokens en Redis usando TTL.
+- Swagger con autenticacion Bearer.
+- Medidas adicionales de seguridad: Helmet, CORS, Rate Limiting, validaciones y sanitizacion de respuestas.
 
-## Arquitectura
+## Tecnologias utilizadas
 
-```text
-Thunder Client / Swagger
-        |
-        v
-API REST Express
-        |
-        v
-Prisma ORM
-        |
-        v
-Supabase PostgreSQL
-        |
-        v
-Redis Pub/Sub Upstash
-        |
-        v
-Subscriber Redis
-        |
-        v
-Socket.io
-        |
-        v
-Panel web de notificaciones
-```
-
-## Componentes principales
-
-### API REST
-
-La API esta construida con Node.js y Express. Expone endpoints para las entidades principales de StudySync:
-
-- Usuarios
-- Materias
-- Grupos
-- Sesiones
-- Recursos
-
-### Prisma ORM
-
-Prisma se utiliza como ORM para comunicarse con Supabase PostgreSQL. Reemplaza el uso de arreglos en memoria y permite que los datos persistan aunque el servidor se reinicie.
-
-### Supabase PostgreSQL
-
-Supabase funciona como base de datos real en la nube. Las tablas se crean a partir del archivo:
-
-```text
-api-service/prisma/schema.prisma
-```
-
-### Redis Pub/Sub
-
-Redis Pub/Sub se utiliza como broker de mensajeria. Cuando ocurre una accion importante, la API publica un evento en un canal Redis.
-
-### Redis Cache
-
-Redis tambien se utiliza como cache para lecturas frecuentes. La cache guarda temporalmente respuestas de listados para reducir consultas repetidas a Supabase.
-
-Endpoints con cache:
-
-```text
-GET /api/usuarios
-GET /api/materias
-GET /api/grupos
-GET /api/sesiones
-GET /api/recursos
-```
-
-Cada respuesta se guarda con una clave que incluye los filtros de la consulta. Ejemplo:
-
-```text
-cache:sesiones:{"fecha":"2026-05-28","limit":"10","page":"1"}
-```
-
-La cache tiene TTL de 60 segundos. Ademas, cuando se ejecuta `POST`, `PUT` o `DELETE`, la API invalida las claves `cache:*` para evitar datos desactualizados.
-
-Los usos de Redis estan separados:
-
-```text
-cache:* -> cache de lecturas
-study:* -> canales Pub/Sub de eventos
-```
-
-### Socket.io
-
-Socket.io permite enviar los eventos recibidos desde Redis a los navegadores conectados en tiempo real.
-
-## Estructura del proyecto
-
-```text
-actividad03/
-  README.md
-  api-service/
-    package.json
-    prisma.config.ts
-    prisma/
-      schema.prisma
-    public/
-      notificaciones.html
-    src/
-      server.js
-      config/
-        db.js
-      controllers/
-        usuariosController.js
-        materiasController.js
-        gruposController.js
-        sesionesController.js
-        recursosController.js
-      routes/
-        usuariosRoutes.js
-        materiasRoutes.js
-        gruposRoutes.js
-        sesionesRoutes.js
-        recursosRoutes.js
-      services/
-        redisPublisher.js
-        redisSubscriber.js
-      middlewares/
-        errorHandler.js
-      utils/
-        request.js
-      swagger.js
-```
+- Node.js
+- Express
+- Prisma ORM
+- Supabase PostgreSQL
+- JSON Web Token
+- bcryptjs
+- Redis Upstash
+- Swagger/OpenAPI
+- Helmet
+- CORS
+- express-rate-limit
+- express-validator
 
 ## Variables de entorno
 
-Crear un archivo `.env` dentro de:
+Crear el archivo:
 
 ```text
-actividad03/api-service/.env
+actividad04/api-service/.env
 ```
 
-Contenido requerido:
+Variables necesarias:
 
 ```env
 DATABASE_URL=postgresql://usuario:password@host:5432/postgres
 REDIS_URL=redis://default:password@host:6379
+JWT_SECRET=clave_secreta_larga_y_segura_2026
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
 PORT=3000
+CORS_ORIGIN=http://localhost:3000
 ```
 
-Importante:
+Notas:
 
+- `JWT_SECRET` se usa para firmar y verificar tokens.
+- `JWT_EXPIRES_IN` define la duracion del access token.
+- `JWT_REFRESH_EXPIRES_IN` define la duracion del refresh token.
+- `REDIS_URL` se usa para Pub/Sub, cache y blacklist de tokens.
 - `.env` no debe subirse a GitHub.
-- `DATABASE_URL` debe usar la URL de Supabase, preferiblemente la de Session Pooler.
-- `REDIS_URL` debe ser la URL TCP de Upstash Redis.
 
-## Instalacion local
+## Ejecutar localmente
 
-Entrar a la carpeta del servicio:
+Entrar al servicio:
 
 ```bash
-cd actividad03/api-service
+cd actividad04/api-service
 ```
 
 Instalar dependencias:
@@ -178,16 +77,16 @@ Instalar dependencias:
 npm install
 ```
 
+Actualizar Supabase con Prisma:
+
+```bash
+npx prisma db push
+```
+
 Generar Prisma Client:
 
 ```bash
 npx prisma generate
-```
-
-Sincronizar tablas con Supabase:
-
-```bash
-npx prisma db push
 ```
 
 Iniciar servidor:
@@ -196,446 +95,483 @@ Iniciar servidor:
 npm start
 ```
 
-El servidor queda disponible en:
+URLs principales:
 
 ```text
 http://localhost:3000
-```
-
-## Pruebas automatizadas
-
-La actividad incluye una suite basica con Jest y Supertest.
-
-Archivo principal:
-
-```text
-api-service/tests/api.validation.test.js
-```
-
-Ejecutar pruebas:
-
-```bash
-cd actividad03/api-service
-npm test
-```
-
-La suite valida:
-
-- `GET /` responde correctamente.
-- `POST /api/usuarios` responde 400 si falta `nombre`.
-- `POST /api/materias` responde 400 si falta `codigo`.
-- `POST /api/grupos` responde 400 si falta `materiaId`.
-- `POST /api/sesiones` responde 400 si falta `usuarioId`.
-- `POST /api/recursos` responde 400 si falta `url`.
-
-Estas pruebas usan mocks de Prisma y Redis para no depender de Supabase ni crear datos reales durante la ejecucion automatizada.
-
-## Interfaces disponibles
-
-Swagger:
-
-```text
 http://localhost:3000/api-docs
-```
-
-Panel de notificaciones:
-
-```text
 http://localhost:3000/notificaciones
 ```
 
-Endpoint raiz:
+## Flujo de autenticacion
+
+### 1. Registro
+
+Endpoint:
 
 ```text
-http://localhost:3000
+POST /auth/register
 ```
 
-## Entidades de la base de datos
-
-### Usuario
-
-Representa a los estudiantes u organizadores del sistema.
-
-Campos principales:
-
-- id
-- nombre
-- email
-- rol
-
-Relaciones:
-
-- Puede crear sesiones.
-- Puede publicar recursos.
-- Puede organizar grupos.
-- Puede pertenecer a grupos.
-
-### Materia
-
-Representa una asignatura o curso.
-
-Campos principales:
-
-- id
-- nombre
-- codigo
-- docente
-- semestre
-
-Relaciones:
-
-- Tiene sesiones.
-- Tiene recursos.
-- Tiene grupos.
-
-### Grupo
-
-Representa un grupo de estudio.
-
-Campos principales:
-
-- id
-- nombre
-- descripcion
-- materiaId
-- organizadorId
-
-Relaciones:
-
-- Pertenece a una materia.
-- Tiene un organizador.
-- Tiene integrantes.
-
-### Sesion
-
-Representa una sesion de estudio.
-
-Campos principales:
-
-- id
-- titulo
-- descripcion
-- fecha
-- hora
-- modalidad
-- usuarioId
-- materiaId
-
-Relaciones:
-
-- Pertenece a un usuario.
-- Pertenece a una materia.
-
-### Recurso
-
-Representa material de estudio publicado.
-
-Campos principales:
-
-- id
-- titulo
-- tipo
-- url
-- descripcion
-- usuarioId
-- materiaId
-
-Relaciones:
-
-- Pertenece a un usuario.
-- Pertenece a una materia.
-
-## Migraciones e indices justificados
-
-La base de datos fue creada inicialmente con Prisma y Supabase. Para documentar cambios estructurales se incluye una migracion SQL en:
-
-```text
-api-service/prisma/migrations/20260528130000_agregar_indices_consultas_frecuentes/migration.sql
-```
-
-Esta migracion agrega indices para optimizar consultas frecuentes de la API.
-
-| Tabla | Indice | Justificacion |
-|---|---|---|
-| `Usuario` | `rol` | Se usa en `GET /api/usuarios?rol=...` y `GET /api/usuarios/rol/:rol`. |
-| `Materia` | `semestre` | Se usa en `GET /api/materias?semestre=...` y `GET /api/materias/semestre/:semestre`. |
-| `Grupo` | `materiaId` | Se usa al filtrar grupos por materia. |
-| `Grupo` | `organizadorId` | Optimiza consultas relacionadas al organizador del grupo. |
-| `Sesion` | `fecha` | Se usa en `GET /api/sesiones/fecha/:fecha`. |
-| `Sesion` | `materiaId` | Se usa al listar sesiones por materia. |
-| `Sesion` | `usuarioId` | Optimiza la relacion entre sesiones y usuarios. |
-| `Recurso` | `tipo` | Se usa en `GET /api/recursos?tipo=...` y `GET /api/recursos/tipo/:tipo`. |
-| `Recurso` | `materiaId` | Optimiza recursos filtrados por materia. |
-| `Recurso` | `usuarioId` | Optimiza recursos filtrados o relacionados por usuario. |
-
-La migracion usa `CREATE INDEX IF NOT EXISTS`, por lo que se puede ejecutar de forma segura sin duplicar indices existentes.
-
-### Aplicar indices en Supabase
-
-Opcion recomendada:
-
-1. Abrir Supabase.
-2. Ir a `SQL Editor`.
-3. Copiar el contenido de `migration.sql`.
-4. Ejecutar el script.
-5. Verificar los indices en `Database -> Indexes`.
-
-No se recomienda usar `prisma migrate reset` porque elimina los datos de la base.
-
-## Endpoints principales
-
-### Usuarios
-
-```text
-GET    /api/usuarios
-GET    /api/usuarios?q=ana&rol=estudiante&page=1&limit=10
-GET    /api/usuarios/:id
-GET    /api/usuarios/rol/:rol
-GET    /api/usuarios/:id/grupos
-POST   /api/usuarios
-PUT    /api/usuarios/:id
-DELETE /api/usuarios/:id
-```
-
-Ejemplo POST:
+Body:
 
 ```json
 {
-  "nombre": "Ana Perez",
-  "email": "ana03@gmail.com",
+  "nombre": "Dorian Escobar",
+  "email": "dorian04@gmail.com",
+  "password": "123456",
   "rol": "estudiante"
 }
 ```
 
-### Materias
+Resultado esperado:
 
 ```text
-GET    /api/materias
-GET    /api/materias?q=prog&semestre=4&page=1&limit=10
-GET    /api/materias/:id
-GET    /api/materias/semestre/:semestre
-GET    /api/materias/:id/sesiones
+201 Created
+```
+
+La contrasena se guarda hasheada con bcrypt. La respuesta no expone el campo `password`.
+
+### 2. Login
+
+Endpoint:
+
+```text
+POST /auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "dorian04@gmail.com",
+  "password": "123456"
+}
+```
+
+Resultado esperado:
+
+```json
+{
+  "mensaje": "Login correcto",
+  "token": "ACCESS_TOKEN",
+  "refreshToken": "REFRESH_TOKEN",
+  "tipo": "Bearer",
+  "expiraEn": "1h",
+  "refreshExpiraEn": "7d"
+}
+```
+
+El `token` se usa para acceder a rutas privadas.
+
+El `refreshToken` se usa para pedir un nuevo access token sin volver a escribir email y contrasena.
+
+### 3. Acceso a rutas privadas
+
+Todas las rutas que empiezan con `/api` estan protegidas:
+
+```text
+GET    /api/usuarios
 POST   /api/materias
-PUT    /api/materias/:id
-DELETE /api/materias/:id
-```
-
-Ejemplo POST:
-
-```json
-{
-  "nombre": "Programacion IV",
-  "codigo": "PROG4",
-  "docente": "Ing. Ramirez",
-  "semestre": "4"
-}
-```
-
-### Grupos
-
-```text
-GET    /api/grupos
-GET    /api/grupos?q=redis&materia=PROG4&page=1&limit=10
-GET    /api/grupos/:id
-GET    /api/grupos/materia/:materia
-POST   /api/grupos
-POST   /api/grupos/:id/integrantes
-PUT    /api/grupos/:id
-DELETE /api/grupos/:id/integrantes/:usuarioId
-DELETE /api/grupos/:id
-```
-
-Ejemplo POST grupo:
-
-```json
-{
-  "nombre": "Grupo Redis",
-  "descripcion": "Grupo de estudio en tiempo real",
-  "materiaId": 1,
-  "organizadorId": 1
-}
-```
-
-Ejemplo agregar integrante:
-
-```json
-{
-  "usuarioId": 2
-}
-```
-
-### Sesiones
-
-```text
-GET    /api/sesiones
-GET    /api/sesiones?q=redis&materia=PROG4&fecha=2026-05-28&page=1&limit=10
-GET    /api/sesiones/:id
-GET    /api/sesiones/materia/:materia
-GET    /api/sesiones/fecha/:fecha
 POST   /api/sesiones
 PUT    /api/sesiones/:id
 DELETE /api/sesiones/:id
 ```
 
-Ejemplo POST:
+Header requerido:
+
+```text
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Sin token:
 
 ```json
 {
-  "titulo": "Sesion Redis con Supabase",
-  "descripcion": "Prueba completa de Actividad 03",
-  "fecha": "2026-05-28",
-  "hora": "18:00",
-  "modalidad": "virtual",
-  "usuarioId": 1,
-  "materiaId": 1
+  "error": "Token requerido"
 }
 ```
 
-### Recursos
-
-```text
-GET    /api/recursos
-GET    /api/recursos?q=prisma&tipo=PDF&page=1&limit=10
-GET    /api/recursos/:id
-GET    /api/recursos/tipo/:tipo
-GET    /api/recursos/buscar/:titulo
-POST   /api/recursos
-PUT    /api/recursos/:id
-DELETE /api/recursos/:id
-```
-
-Ejemplo POST:
+Con token invalido:
 
 ```json
 {
-  "titulo": "Guia Prisma",
-  "tipo": "PDF",
-  "url": "https://example.com/guia-prisma.pdf",
-  "descripcion": "Material de apoyo",
-  "usuarioId": 1,
-  "materiaId": 1
+  "error": "Token invalido"
 }
 ```
 
-## Eventos Redis Pub/Sub
-
-La API publica eventos cuando ocurren acciones importantes.
-
-| Accion | Evento | Canal Redis |
-|---|---|---|
-| Crear usuario | `usuario.registrado` | `study:usuario:registrado` |
-| Crear materia | `materia.creada` | `study:materia:creada` |
-| Crear sesion | `sesion.creada` | `study:sesion:creada` |
-| Publicar recurso | `recurso.publicado` | `study:recurso:publicado` |
-| Usuario se une a grupo | `usuario.unido` | `study:usuario:unido` |
-
-Estructura del mensaje:
+Con token expirado:
 
 ```json
 {
-  "tipo": "sesion.creada",
-  "payload": {
-    "id": 1,
-    "titulo": "Sesion Redis con Supabase"
-  },
-  "timestamp": "2026-05-28T10:00:00.000Z",
-  "version": "1.0"
+  "error": "Token expirado, inicia sesion nuevamente"
 }
 ```
 
-## Flujo de integracion
+## Refresh token
 
-Ejemplo con una sesion:
+El access token dura poco tiempo. Si expira, el usuario puede renovar su sesion con el refresh token.
+
+Endpoint:
 
 ```text
-1. El usuario hace POST /api/sesiones desde Swagger.
-2. Express recibe la peticion.
-3. Prisma ejecuta prisma.sesion.create().
-4. Supabase guarda la sesion.
-5. La API publica sesion.creada en Redis.
-6. El suscriptor Redis escucha study:*.
-7. Socket.io emite nuevo-evento.
-8. La pagina /notificaciones muestra la tarjeta sin recargar.
+POST /auth/refresh
 ```
 
-## Pruebas de integracion
+Body:
 
-### Crear registros
-
-Crear al menos:
-
-- 1 usuario
-- 1 materia
-- 1 sesion
-
-Luego verificar en Supabase:
-
-```text
-Supabase Dashboard -> Table Editor
+```json
+{
+  "refreshToken": "PEGAR_REFRESH_TOKEN_AQUI"
+}
 ```
 
-Las tablas deben mostrar los registros creados.
+Resultado esperado:
 
-### Persistencia
+```json
+{
+  "mensaje": "Token renovado correctamente",
+  "token": "NUEVO_ACCESS_TOKEN",
+  "tipo": "Bearer",
+  "expiraEn": "1h"
+}
+```
 
-1. Crear datos desde Swagger o Thunder Client.
-2. Detener el servidor con `Ctrl + C`.
-3. Volver a iniciar con `npm start`.
-4. Ejecutar:
+Si el refresh token expira:
+
+```json
+{
+  "error": "Refresh token expirado, inicia sesion nuevamente"
+}
+```
+
+## Logout con blacklist en Redis
+
+Un JWT normalmente sigue siendo valido hasta que expire. Para cerrar sesion antes de la expiracion, el token se guarda en Redis dentro de una blacklist.
+
+Endpoint:
 
 ```text
-GET /api/usuarios
-GET /api/materias
+POST /auth/logout
+```
+
+Header:
+
+```text
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Resultado esperado:
+
+```json
+{
+  "mensaje": "Logout correcto. Token invalidado hasta su expiracion"
+}
+```
+
+Luego, si se intenta usar el mismo token:
+
+```json
+{
+  "error": "Token invalidado. Inicia sesion nuevamente"
+}
+```
+
+Redis guarda el token con TTL. Esto significa que la clave se elimina automaticamente cuando el token ya habria expirado.
+
+Ejemplo conceptual:
+
+```text
+blacklist:jwt:TOKEN -> TTL hasta la expiracion del token
+```
+
+## Swagger/OpenAPI
+
+Swagger esta disponible en:
+
+```text
+http://localhost:3000/api-docs
+```
+
+La documentacion incluye:
+
+- Endpoints de autenticacion.
+- Endpoints privados de las entidades.
+- Parametros.
+- Body esperado.
+- Respuestas posibles.
+- Ejemplos.
+- Autenticacion Bearer.
+
+### Probar Bearer Token en Swagger
+
+1. Ejecutar `POST /auth/login`.
+2. Copiar el valor de `token`.
+3. Hacer clic en `Authorize`.
+4. Pegar el token.
+
+Segun la configuracion de Swagger, puede pegarse solo el token:
+
+```text
+eyJhbGciOiJIUzI1NiIsInR5cCI6...
+```
+
+Si no funciona, pegarlo con Bearer:
+
+```text
+Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...
+```
+
+Nunca debe quedar duplicado:
+
+```text
+Bearer Bearer TOKEN
+```
+
+## Medidas de seguridad adicionales
+
+### Helmet
+
+Helmet agrega cabeceras HTTP de seguridad:
+
+```js
+app.use(helmet());
+```
+
+Ayuda contra riesgos comunes como clickjacking, sniffing de contenido y configuraciones inseguras del navegador.
+
+Cabeceras esperadas:
+
+```text
+x-frame-options
+x-content-type-options
+content-security-policy
+strict-transport-security
+```
+
+### CORS
+
+CORS controla que dominios pueden llamar a la API:
+
+```js
+app.use(cors({
+  origin: corsOrigen,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+```
+
+En produccion no se recomienda usar `origin: '*'`. Se debe configurar:
+
+```env
+CORS_ORIGIN=https://tu-frontend.com
+```
+
+### Rate Limiting
+
+La API limita peticiones por IP para reducir abuso:
+
+```text
+General: 150 peticiones cada 15 minutos
+Auth: 25 intentos cada 15 minutos
+```
+
+Si se supera el limite:
+
+```json
+{
+  "error": "Demasiadas peticiones. Intente nuevamente mas tarde."
+}
+```
+
+Para login/register:
+
+```json
+{
+  "error": "Demasiados intentos de autenticacion. Intente nuevamente mas tarde."
+}
+```
+
+### Validacion de datos
+
+Las rutas usan `express-validator` para validar body, params y query antes de llegar al controlador.
+
+Ejemplo de error:
+
+```json
+{
+  "error": "Datos invalidos",
+  "detalles": [
+    {
+      "campo": "email",
+      "mensaje": "El email debe tener un formato valido"
+    }
+  ]
+}
+```
+
+### Sanitizacion de respuestas
+
+El middleware `sanitizeResponseMiddleware` elimina `password` de cualquier respuesta JSON.
+
+Esto evita exponer contrasenas hasheadas accidentalmente.
+
+## Prueba completa desde cero
+
+### 1. Registrar usuario
+
+```text
+POST /auth/register
+```
+
+```json
+{
+  "nombre": "Dorian Escobar",
+  "email": "dorian04@gmail.com",
+  "password": "123456",
+  "rol": "estudiante"
+}
+```
+
+### 2. Login
+
+```text
+POST /auth/login
+```
+
+```json
+{
+  "email": "dorian04@gmail.com",
+  "password": "123456"
+}
+```
+
+Guardar:
+
+```text
+ACCESS_TOKEN
+REFRESH_TOKEN
+```
+
+### 3. Probar ruta privada sin token
+
+```text
 GET /api/sesiones
 ```
 
-Los datos deben seguir disponibles porque estan guardados en Supabase.
+Resultado:
 
-### Redis Pub/Sub
+```text
+401 Token requerido
+```
 
-Con el servidor activo y `/notificaciones` abierto, crear una sesion:
+### 4. Autorizar Swagger
+
+Pegar el access token en `Authorize`.
+
+### 5. Crear materia
+
+```text
+POST /api/materias
+```
+
+```json
+{
+  "nombre": "Programacion IV",
+  "codigo": "PROG4-A04",
+  "docente": "Ing. Ramirez",
+  "semestre": "4"
+}
+```
+
+### 6. Crear sesion segura
 
 ```text
 POST /api/sesiones
 ```
 
-Resultado esperado en consola:
-
-```text
-[Redis Pub] Evento publicado en study:sesion:creada: sesion.creada
-[Redis Sub] Recibido en study:sesion:creada: sesion.creada
-[Socket.io] Evento enviado a 1 cliente(s)
+```json
+{
+  "titulo": "Sesion segura con JWT",
+  "descripcion": "Prueba Actividad 04",
+  "fecha": "2026-06-01",
+  "hora": "18:00",
+  "modalidad": "virtual",
+  "materiaId": 1
+}
 ```
 
-Resultado esperado en navegador:
+No se envia `usuarioId`. La API usa el usuario autenticado:
+
+```js
+usuarioId = req.user.id
+```
+
+### 7. Renovar token
 
 ```text
-Tarjeta con canal study:sesion:creada y tipo sesion.creada
+POST /auth/refresh
 ```
-### Por que Redis y no solo la base de datos
 
-Supabase PostgreSQL se utiliza para guardar datos persistentes, pero la base de datos no debe usarse como mecanismo principal de notificaciones en tiempo real. Si solo se usara la base de datos, los clientes tendrian que consultar constantemente si existen cambios nuevos, lo que se conoce como polling.
+```json
+{
+  "refreshToken": "PEGAR_REFRESH_TOKEN"
+}
+```
 
-Redis Pub/Sub permite que la API publique un evento justo cuando ocurre una accion importante, como crear una sesion o publicar un recurso. Los servicios suscriptores reciben el evento inmediatamente sin consultar repetidamente la base de datos.
+Resultado:
 
-Esto mejora la arquitectura porque:
+```text
+200 Token renovado correctamente
+```
 
-- Desacopla la API de los suscriptores.
-- Reduce consultas innecesarias a Supabase.
-- Permite notificaciones en tiempo real.
-- Facilita que varios servicios reaccionen al mismo evento.
-- Mantiene a Supabase como sistema de persistencia y a Redis como sistema de mensajeria.
+### 8. Logout
 
-En esta actividad, Supabase guarda la verdad de los datos y Redis comunica los cambios en tiempo real.
+```text
+POST /auth/logout
+```
+
+Header:
+
+```text
+Authorization: Bearer ACCESS_TOKEN
+```
+
+Resultado:
+
+```text
+200 Logout correcto
+```
+
+### 9. Probar token invalidado
+
+Con el mismo token anterior:
+
+```text
+GET /api/sesiones
+```
+
+Resultado:
+
+```text
+401 Token invalidado. Inicia sesion nuevamente
+```
+
+## Requisitos estrategicos
+
+| Requisito | Estado |
+|---|---|
+| Refresh token con expiracion correcta | Implementado |
+| Logout con blacklist en Redis usando TTL | Implementado |
+| Swagger con autenticacion Bearer | Implementado |
+| Rate limiting + Helmet | Implementado |
 
 ## Despliegue en Render
-
-Crear un nuevo Web Service en Render.
 
 Configuracion recomendada:
 
 ```text
-Root Directory: actividad03/api-service
+Root Directory: actividad04/api-service
 Build Command: npm install && npm run build
 Start Command: npm start
 ```
@@ -645,32 +581,13 @@ Variables de entorno en Render:
 ```env
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
+JWT_SECRET=clave_secreta_larga_y_segura_2026
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+CORS_ORIGIN=https://tu-dominio.com
+PORT=3000
 ```
 
-Despues del despliegue:
+## Conclusion
 
-```text
-https://TU-SERVICIO.onrender.com/api-docs
-https://TU-SERVICIO.onrender.com/notificaciones
-```
-
-## Evidencias recomendadas
-
-Para el informe o defensa, guardar capturas de:
-
-- Swagger creando usuario, materia y sesion.
-- Supabase Table Editor mostrando los registros.
-- Terminal mostrando `[Redis Pub]` y `[Redis Sub]`.
-- Pagina `/notificaciones` mostrando las tarjetas.
-- Prueba despues de reiniciar el servidor mostrando que los datos persisten.
-- Configuracion de Render con variables de entorno ocultando valores sensibles.
-
-## Seguridad
-
-- No subir `.env` a GitHub.
-- No copiar `DATABASE_URL` ni `REDIS_URL` dentro del codigo.
-- Si una credencial se sube por error, cambiar la contraseña en Supabase o Upstash.
-
-## Conclusiones
-
-La Actividad 03 demuestra la integracion de una API REST con una base de datos real y un sistema de mensajeria en tiempo real. StudySync ahora puede guardar datos persistentes en Supabase, publicar eventos en Redis y mostrar notificaciones instantaneas mediante Socket.io.
+La Actividad 04 convierte StudySync en una API segura y documentada. JWT protege las rutas privadas, bcrypt protege las contrasenas, refresh token mantiene sesiones sin pedir credenciales nuevamente, Redis permite invalidar tokens con TTL en logout y Swagger permite probar la API completa desde `/api-docs`.

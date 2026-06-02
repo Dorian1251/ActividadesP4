@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
+const { tokenEstaEnBlacklist } = require('../services/tokenBlacklistService');
  
 const authMiddleware = async (req, res, next) => {
   try {
@@ -22,6 +23,12 @@ const authMiddleware = async (req, res, next) => {
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ error: 'JWT_SECRET no esta configurado' });
     }
+
+    const estaInvalidado = await tokenEstaEnBlacklist(token);
+
+    if (estaInvalidado) {
+      return res.status(401).json({ error: 'Token invalidado. Inicia sesion nuevamente' });
+    }
  
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
  
@@ -41,11 +48,14 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ error: 'Usuario del token no existe' });
     }
  
+    req.token = token;
+    req.tokenPayload = decoded;
     req.user = usuario;
+    req.usuario = usuario;
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expirado' });
+      return res.status(401).json({ error: 'Token expirado, inicia sesion nuevamente' });
     }
  
     if (error.name === 'JsonWebTokenError') {

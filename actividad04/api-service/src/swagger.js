@@ -75,8 +75,40 @@ const swaggerSpec = {
           }
         },
         responses: {
-          200: { description: 'Login correcto con token JWT' },
+          200: { description: 'Login correcto con access token y refresh token' },
           401: { description: 'Credenciales invalidas' }
+        }
+      }
+    },
+    '/auth/refresh': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Renovar access token usando refresh token',
+        security: [],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              example: {
+                refreshToken: 'PEGAR_REFRESH_TOKEN_AQUI'
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Access token renovado correctamente' },
+          400: { description: 'Falta refreshToken' },
+          401: { description: 'Refresh token invalido o expirado' }
+        }
+      }
+    },
+    '/auth/logout': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Cerrar sesion e invalidar token JWT en Redis',
+        responses: {
+          200: { description: 'Logout correcto. Token agregado a blacklist con TTL' },
+          401: { description: 'Token requerido, invalido o ya invalidado' }
         }
       }
     },
