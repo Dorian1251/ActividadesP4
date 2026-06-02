@@ -1,0 +1,120 @@
+# cloudformation/template.yaml
+# Template de AWS CloudFormation para StudySync Actividad 04.
+# Define 3 recursos principales: S3, DynamoDB y SSM Parameter Store.
+#
+# LocalStack:
+#   awslocal cloudformation create-stack --stack-name studysync-stack --template-body file://cloudformation/template.yaml --parameters ParameterKey=Ambiente,ParameterValue=dev ParameterKey=ApiUrl,ParameterValue=http://localhost:3000
+#
+# AWS real:
+#   aws cloudformation create-stack --stack-name studysync-prod --template-body file://cloudformation/template.yaml --parameters ParameterKey=Ambiente,ParameterValue=prod ParameterKey=ApiUrl,ParameterValue=https://tu-api.onrender.com --region us-east-1
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: StudySync Actividad 04 - Infraestructura base (S3 + DynamoDB + SSM)
+
+Parameters:
+  Ambiente:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Ambiente de despliegue (dev/staging/prod)
+
+  ApiUrl:
+    Type: String
+    Default: http://localhost:3000
+    Description: URL base de la API StudySync
+
+Resources:
+  StudySyncBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub studysync-archivos-${Ambiente}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+              - DELETE
+            AllowedOrigins:
+              - !Ref ApiUrl
+            MaxAge: 3600
+      Tags:
+        - Key: Proyecto
+          Value: StudySync
+        - Key: Actividad
+          Value: Actividad04
+        - Key: Ambiente
+          Value: !Ref Ambiente
+
+  TablaEventos:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub studysync-eventos-${Ambiente}
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: sesionId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      AttributeDefinitions:
+        - AttributeName: sesionId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Proyecto
+          Value: StudySync
+        - Key: Actividad
+          Value: Actividad04
+        - Key: Ambiente
+          Value: !Ref Ambiente
+
+  ParametroApiUrl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub /studysync/${Ambiente}/api-url
+      Type: String
+      Value: !Ref ApiUrl
+      Description: URL base de la API StudySync
+      Tags:
+        Proyecto: StudySync
+        Actividad: Actividad04
+        Ambiente: !Ref Ambiente
+
+Outputs:
+  BucketName:
+    Description: Nombre del bucket S3 creado
+    Value: !Ref StudySyncBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-BucketName
+
+  TablaEventosName:
+    Description: Nombre de la tabla DynamoDB de eventos
+    Value: !Ref TablaEventos
+    Export:
+      Name: !Sub ${AWS::StackName}-TablaEventosName
+
+  TablaEventosArn:
+    Description: ARN de la tabla DynamoDB de eventos
+    Value: !GetAtt TablaEventos.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-TablaEventosArn
+
+  ParametroApiUrlPath:
+    Description: Path del parametro SSM con la URL de la API
+    Value: !Ref ParametroApiUrl

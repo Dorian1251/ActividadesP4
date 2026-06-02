@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudySync - Login</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="card auth-box">
+    <h1>StudySync</h1>
+    <p class="subtitle">Ingresa con tu cuenta</p>
+
+    <div id="alerta"></div>
+
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="ana@upds.edu.bo">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Contrasena</label>
+      <input type="password" id="password">
+    </div>
+
+    <button id="loginBtn" class="btn btn-primary" style="width: 100%;" type="button">
+      Ingresar
+    </button>
+
+    <p style="text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+      Sin cuenta?
+      <a href="/static/register.html" style="color: var(--accent-blue);">Registrate</a>
+    </p>
+  </div>
+
+  <script src="/static/login.js"></script>
+</body>
+</html>

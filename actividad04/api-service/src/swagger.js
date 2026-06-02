@@ -17,6 +17,7 @@ const swaggerSpec = {
     { name: 'Materias' },
     { name: 'Grupos' },
     { name: 'Sesiones' },
+    { name: 'Asistencias' },
     { name: 'Recursos' }
   ],
   components: {
@@ -349,7 +350,6 @@ const swaggerSpec = {
                 fecha: '2026-05-28',
                 hora: '18:00',
                 modalidad: 'virtual',
-                usuarioId: 1,
                 materiaId: 1
               }
             }
@@ -372,6 +372,70 @@ const swaggerSpec = {
         summary: 'Listar sesiones por fecha',
         parameters: [{ name: 'fecha', in: 'path', required: true, schema: { type: 'string' }, example: '2026-05-28' }],
         responses: { 200: { description: 'Sesiones filtradas por fecha' } }
+      }
+    },
+    '/api/sesiones/{id}/qr': {
+      get: {
+        tags: ['Asistencias'],
+        summary: 'Generar QR de asistencia para una sesion',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: { description: 'QR generado con URL de asistencia' },
+          404: { description: 'Sesion no encontrada' }
+        }
+      }
+    },
+    '/api/sesiones/{id}/asistencia/mia': {
+      get: {
+        tags: ['Asistencias'],
+        summary: 'Ver si el usuario autenticado marco asistencia en la sesion',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: { description: 'Estado de asistencia del usuario autenticado' },
+          404: { description: 'Sesion no encontrada' }
+        }
+      }
+    },
+    '/api/sesiones/{id}/asistencias': {
+      get: {
+        tags: ['Asistencias'],
+        summary: 'Listar asistentes de una sesion',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: { description: 'Lista de asistencias registradas' },
+          404: { description: 'Sesion no encontrada' }
+        }
+      }
+    },
+    '/api/sesiones/{id}/asistencia': {
+      post: {
+        tags: ['Asistencias'],
+        summary: 'Marcar mi asistencia usando el codigo del QR',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              example: {
+                codigo: 'PEGAR_CODIGO_DEL_QR'
+              }
+            }
+          }
+        },
+        responses: {
+          201: { description: 'Asistencia marcada correctamente' },
+          401: { description: 'Codigo QR invalido' },
+          404: { description: 'Sesion no encontrada' }
+        }
+      },
+      delete: {
+        tags: ['Asistencias'],
+        summary: 'Desmarcar mi asistencia en una sesion',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: { description: 'Asistencia desmarcada correctamente' },
+          404: { description: 'Asistencia no encontrada' }
+        }
       }
     },
     '/api/sesiones/{id}': {

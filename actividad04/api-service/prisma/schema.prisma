@@ -6,27 +6,28 @@
 generator client {
   provider = "prisma-client-js"
 }
- 
+
 datasource db {
   provider = "postgresql"
 }
- 
+
 model Usuario {
-  id            Int       @id @default(autoincrement())
+  id            Int          @id @default(autoincrement())
   nombre        String
-  email         String    @unique
+  email         String       @unique
   password      String
   rol           String
   sesiones      Sesion[]
-  gruposCreados Grupo[]   @relation("OrganizadorGrupo")
+  asistencias   Asistencia[]
+  gruposCreados Grupo[]      @relation("OrganizadorGrupo")
   recursos      Recurso[]
-  grupos        Grupo[]   @relation("IntegrantesGrupo")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
- 
+  grupos        Grupo[]      @relation("IntegrantesGrupo")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
   @@index([rol])
 }
- 
+
 model Materia {
   id        Int       @id @default(autoincrement())
   nombre    String
@@ -38,10 +39,10 @@ model Materia {
   grupos    Grupo[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
- 
+
   @@index([semestre])
 }
- 
+
 model Grupo {
   id            Int       @id @default(autoincrement())
   nombre        String
@@ -53,30 +54,47 @@ model Grupo {
   integrantes   Usuario[] @relation("IntegrantesGrupo")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
- 
+
   @@index([materiaId])
   @@index([organizadorId])
 }
- 
+
 model Sesion {
-  id          Int      @id @default(autoincrement())
-  titulo      String
-  descripcion String?
-  fecha       String
-  hora        String
-  modalidad   String
-  usuarioId   Int
-  materiaId   Int
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
-  materia     Materia  @relation(fields: [materiaId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
- 
+  id               Int          @id @default(autoincrement())
+  titulo           String
+  descripcion      String?
+  fecha            String
+  hora             String
+  modalidad        String
+  codigoAsistencia String?      @unique @default(uuid())
+  usuarioId        Int
+  materiaId        Int
+  usuario          Usuario      @relation(fields: [usuarioId], references: [id])
+  materia          Materia      @relation(fields: [materiaId], references: [id])
+  asistencias      Asistencia[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
   @@index([fecha])
   @@index([materiaId])
   @@index([usuarioId])
 }
- 
+
+model Asistencia {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  sesionId  Int
+  fechaHora DateTime @default(now())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  sesion    Sesion   @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([usuarioId, sesionId])
+  @@index([sesionId])
+  @@index([usuarioId])
+}
+
 model Recurso {
   id          Int      @id @default(autoincrement())
   titulo      String
@@ -89,7 +107,7 @@ model Recurso {
   materia     Materia  @relation(fields: [materiaId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
- 
+
   @@index([tipo])
   @@index([materiaId])
   @@index([usuarioId])

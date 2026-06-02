@@ -416,6 +416,110 @@ El middleware `sanitizeResponseMiddleware` elimina `password` de cualquier respu
 
 Esto evita exponer contrasenas hasheadas accidentalmente.
 
+## Infrastructure as Code (IaC)
+
+Infrastructure as Code permite definir infraestructura mediante archivos declarativos en lugar de crear recursos manualmente desde la consola.
+
+En esta actividad se agrego el archivo:
+
+```text
+cloudformation/template.yaml
+```
+
+Este template de CloudFormation define recursos AWS para StudySync:
+
+| Recurso | Servicio | Uso |
+|---|---|---|
+| `StudySyncBucket` | S3 | Almacenamiento de materiales o archivos de estudio. |
+| `TablaEventos` | DynamoDB | Registro de eventos o auditoria de sesiones con TTL automatico. |
+| `ParametroApiUrl` | SSM Parameter Store | Parametro centralizado con la URL base de la API. |
+
+El template usa el parametro `Ambiente` para reutilizar el mismo YAML en desarrollo y produccion:
+
+```text
+Ambiente=dev
+Ambiente=staging
+Ambiente=prod
+```
+
+Tambien usa el parametro `ApiUrl` para configurar CORS en S3 y guardar la URL de la API en SSM:
+
+```text
+ApiUrl=http://localhost:3000
+ApiUrl=https://tu-api.onrender.com
+```
+
+Esto evita ClickOps porque los recursos quedan documentados, versionados en Git y se pueden recrear con un comando.
+
+### Probar con LocalStack
+
+LocalStack simula AWS localmente usando Docker. Sirve para validar el template sin generar costos.
+
+Crear el stack local:
+
+```bash
+awslocal cloudformation create-stack --stack-name studysync-dev --template-body file://cloudformation/template.yaml --parameters ParameterKey=Ambiente,ParameterValue=dev ParameterKey=ApiUrl,ParameterValue=http://localhost:3000
+```
+
+Verificar estado:
+
+```bash
+awslocal cloudformation describe-stacks --stack-name studysync-dev
+```
+
+Resultado esperado:
+
+```text
+StackStatus: CREATE_COMPLETE
+```
+
+Ver recursos creados:
+
+```bash
+awslocal s3 ls
+awslocal dynamodb list-tables
+awslocal ssm get-parameter --name /studysync/dev/api-url
+```
+
+### Desplegar en AWS real
+
+El mismo `template.yaml` funciona en AWS real. Solo cambia el comando.
+
+Configurar credenciales:
+
+```bash
+aws configure
+```
+
+Crear stack en AWS:
+
+```bash
+aws cloudformation create-stack --stack-name studysync-prod --template-body file://cloudformation/template.yaml --parameters ParameterKey=Ambiente,ParameterValue=prod ParameterKey=ApiUrl,ParameterValue=https://tu-api.onrender.com --region us-east-1
+```
+
+Verificar estado:
+
+```bash
+aws cloudformation describe-stacks --stack-name studysync-prod --region us-east-1
+```
+
+Eliminar recursos para evitar costos:
+
+```bash
+aws cloudformation delete-stack --stack-name studysync-prod --region us-east-1
+```
+
+### Evidencias IaC
+
+Para defender este punto se recomienda mostrar:
+
+- Archivo `cloudformation/template.yaml`.
+- Stack en `CREATE_COMPLETE`.
+- Bucket S3 creado.
+- Tabla DynamoDB creada.
+- Parametro SSM creado.
+- Comando usado en LocalStack o AWS real.
+
 ## Prueba completa desde cero
 
 ### 1. Registrar usuario

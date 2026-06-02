@@ -1,7 +1,6 @@
 const prisma = require('../config/db');
 const { borrarTodaCache, crearCacheKey, guardarCache, obtenerCache } = require('../services/cacheService');
-const { CHANNELS, publicarEvento } = require('../services/redisPublisher');
-const { limpiarDatos, obtenerId, obtenerPaginacion, validarCampos } = require('../utils/request');
+const { limpiarDatos, obtenerId } = require('../utils/request');
 
 const includeRelaciones = {
   sesiones: true,
@@ -12,7 +11,7 @@ const includeRelaciones = {
 
 const obtenerUsuarios = async (req, res, next) => {
   try {
-    const cacheKey = crearCacheKey('usuarios', req.query);
+    const cacheKey = crearCacheKey('usuarios', { usuarioId: req.user.id });
     const cache = await obtenerCache(cacheKey);
 
     if (cache) {
@@ -20,20 +19,16 @@ const obtenerUsuarios = async (req, res, next) => {
       return res.json(cache);
     }
 
-    const { q, rol } = req.query;
-    const { skip, take } = obtenerPaginacion(req.query);
-    const where = limpiarDatos({
-      nombre: q ? { contains: q, mode: 'insensitive' } : undefined,
-      rol: rol || undefined
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: req.user.id },
+      include: includeRelaciones,
     });
 
-    const usuarios = await prisma.usuario.findMany({
-      where,
-      include: includeRelaciones,
-      skip,
-      take,
-      orderBy: { id: 'asc' }
-    });
+    if (!usuario) {
+      return res.status(404).json({ error: 'Tu usuario autenticado ya no existe' });
+    }
+
+    const usuarios = [usuario];
 
     await guardarCache(cacheKey, usuarios);
     res.set('X-Cache', 'MISS');
@@ -45,13 +40,16 @@ const obtenerUsuarios = async (req, res, next) => {
 
 const obtenerUsuariosPorRol = async (req, res, next) => {
   try {
-    const usuarios = await prisma.usuario.findMany({
-      where: { rol: req.params.rol },
-      include: includeRelaciones,
-      orderBy: { id: 'asc' }
+    if (req.user.rol !== req.params.rol) {
+      return res.json([]);
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: req.user.id },
+      include: includeRelaciones
     });
 
-    res.json(usuarios);
+    res.json(usuario ? [usuario] : []);
   } catch (error) {
     next(error);
   }
@@ -63,6 +61,10 @@ const obtenerGruposDelUsuario = async (req, res, next) => {
 
     if (!id) {
       return res.status(400).json({ error: 'ID invalido' });
+    }
+
+    if (id !== req.user.id) {
+      return res.status(403).json({ error: 'No puedes consultar grupos de otro usuario' });
     }
 
     const usuario = await prisma.usuario.findUnique({
@@ -95,6 +97,10 @@ const obtenerUsuarioPorId = async (req, res, next) => {
       return res.status(400).json({ error: 'ID invalido' });
     }
 
+    if (id !== req.user.id) {
+      return res.status(403).json({ error: 'Solo puedes consultar tu propio usuario' });
+    }
+
     const usuario = await prisma.usuario.findUnique({
       where: { id },
       include: includeRelaciones
@@ -112,24 +118,9 @@ const obtenerUsuarioPorId = async (req, res, next) => {
 
 const crearUsuario = async (req, res, next) => {
   try {
-    const campoFaltante = validarCampos(req.body, ['nombre', 'email', 'rol']);
-
-    if (campoFaltante) {
-      return res.status(400).json({ error: `Falta el campo obligatorio: ${campoFaltante}` });
-    }
-
-    const usuario = await prisma.usuario.create({
-      data: {
-        nombre: req.body.nombre,
-        email: req.body.email,
-        rol: req.body.rol
-      }
+    res.status(403).json({
+      error: 'No puedes crear usuarios desde esta ruta. Usa /auth/register'
     });
-
-    await borrarTodaCache();
-    await publicarEvento(CHANNELS.USUARIO_REGISTRADO, 'usuario.registrado', usuario);
-
-    res.status(201).json(usuario);
   } catch (error) {
     next(error);
   }
@@ -141,6 +132,10 @@ const actualizarUsuario = async (req, res, next) => {
 
     if (!id) {
       return res.status(400).json({ error: 'ID invalido' });
+    }
+
+    if (id !== req.user.id) {
+      return res.status(403).json({ error: 'Solo puedes actualizar tu propio usuario' });
     }
 
     const usuarioExiste = await prisma.usuario.findUnique({ where: { id } });
@@ -171,6 +166,10 @@ const eliminarUsuario = async (req, res, next) => {
 
     if (!id) {
       return res.status(400).json({ error: 'ID invalido' });
+    }
+
+    if (id !== req.user.id) {
+      return res.status(403).json({ error: 'Solo puedes eliminar tu propio usuario' });
     }
 
     const usuarioExiste = await prisma.usuario.findUnique({ where: { id } });
