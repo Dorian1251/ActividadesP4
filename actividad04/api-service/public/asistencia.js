@@ -1,3 +1,5 @@
+/* public/asistencia.js */
+
 let token = sessionStorage.getItem('token');
 const refreshToken = sessionStorage.getItem('refreshToken');
 const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
@@ -15,31 +17,26 @@ const estado = document.getElementById('estado');
 let marcada = false;
 let intentoAutoMarcado = false;
 
+i18n.applyTranslations();
+
 if (!token || !usuario) {
   sessionStorage.setItem('redirectAfterLogin', `${window.location.pathname}${window.location.search}`);
   window.location.href = '/static/login.html';
-}
-
-function mostrarAlerta(mensaje, tipo = 'danger') {
-  alerta.innerHTML = `<div class="alert alert-${tipo}">${mensaje}</div>`;
 }
 
 async function renovarToken() {
   if (!refreshToken) {
     return false;
   }
-
   try {
     const res = await fetch('/auth/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken })
     });
-
     if (!res.ok) {
       return false;
     }
-
     const data = await res.json();
     token = data.token;
     sessionStorage.setItem('token', data.token);
@@ -49,92 +46,77 @@ async function renovarToken() {
   }
 }
 
-async function apiFetch(url, options = {}) {
-  const headers = {
-    ...(options.headers || {}),
-    Authorization: `Bearer ${token}`
-  };
-
-  let res = await fetch(url, { ...options, headers });
-
+async function apiFetch(url, options) {
+  options = options || {};
+  const headers = Object.assign({}, options.headers || {}, { Authorization: 'Bearer ' + token });
+  let res = await fetch(url, Object.assign({}, options, { headers }));
   if (res.status === 401 && await renovarToken()) {
-    headers.Authorization = `Bearer ${token}`;
-    res = await fetch(url, { ...options, headers });
+    headers.Authorization = 'Bearer ' + token;
+    res = await fetch(url, Object.assign({}, options, { headers }));
   }
-
   if (res.status === 401) {
     sessionStorage.setItem('redirectAfterLogin', `${window.location.pathname}${window.location.search}`);
     sessionStorage.removeItem('token');
     window.location.href = '/static/login.html';
   }
-
   return res;
 }
 
 function actualizarBoton() {
   toggleBtn.disabled = false;
-
   if (marcada) {
-    toggleBtn.textContent = 'Desmarcar asistencia';
-    toggleBtn.className = 'btn btn-warning';
-    estado.textContent = `Asistencia marcada por ${usuario.nombre}.`;
+    toggleBtn.innerHTML = `<i class="bi bi-x-square me-1"></i>${i18n.t('asistencia.desmarcar')}`;
+    toggleBtn.className = 'btn btn-warning btn-lg w-100 w-md-auto';
+    estado.textContent = i18n.t('asistencia.marcada', { nombre: usuario.nombre });
     return;
   }
-
-  toggleBtn.textContent = 'Marcar asistencia';
-  toggleBtn.className = 'btn btn-success';
-  estado.textContent = `Asistencia pendiente para ${usuario.nombre}.`;
+  toggleBtn.innerHTML = `<i class="bi bi-check2-square me-1"></i>${i18n.t('asistencia.marcar')}`;
+  toggleBtn.className = 'btn btn-success btn-lg w-100 w-md-auto';
+  estado.textContent = i18n.t('asistencia.pendiente', { nombre: usuario.nombre });
 }
 
 async function cargarEstado() {
   if (!sesionId) {
-    mostrarAlerta('Falta el parametro sesionId.');
+    ui.toast('Falta el parametro sesionId.', 'danger');
     return;
   }
-
   try {
     const res = await apiFetch(`/api/sesiones/${sesionId}/asistencia/mia`);
     const data = await res.json();
-
     if (!res.ok) {
-      mostrarAlerta(data.error || 'No se pudo cargar la asistencia.');
+      ui.toast(data.error || i18n.t('asistencia.error'), 'danger');
       return;
     }
-
     marcada = data.marcada;
     tituloSesion.textContent = data.sesion.titulo;
     detalleSesion.textContent = `${data.sesion.fecha} ${data.sesion.hora} | ${data.sesion.modalidad} | ${data.sesion.materia?.nombre || 'Sin materia'}`;
     actualizarBoton();
-
     if (!marcada && codigo && !intentoAutoMarcado) {
       intentoAutoMarcado = true;
       await marcar();
     }
   } catch (error) {
-    mostrarAlerta('Error de conexion al cargar asistencia.');
+    ui.toast(i18n.t('asistencia.error'), 'danger');
   }
 }
 
 async function marcar() {
   if (!codigo) {
-    mostrarAlerta('Falta el codigo QR. Abre esta pagina desde el QR generado por la sesion.');
+    ui.toast('Falta el codigo QR. Abre esta pagina desde el QR generado por la sesion.', 'warning');
     return;
   }
-
   const res = await apiFetch(`/api/sesiones/${sesionId}/asistencia`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ codigo })
   });
   const data = await res.json();
-
   if (!res.ok) {
-    mostrarAlerta(data.error || 'No se pudo marcar asistencia.');
+    ui.toast(data.error || 'No se pudo marcar asistencia.', 'danger');
     return;
   }
-
   marcada = true;
-  mostrarAlerta(data.mensaje || 'Asistencia marcada.', 'success');
+  ui.toast(data.mensaje || i18n.t('comun.exito'), 'success');
   actualizarBoton();
 }
 
@@ -143,20 +125,17 @@ async function desmarcar() {
     method: 'DELETE'
   });
   const data = await res.json();
-
   if (!res.ok) {
-    mostrarAlerta(data.error || 'No se pudo desmarcar asistencia.');
+    ui.toast(data.error || 'No se pudo desmarcar asistencia.', 'danger');
     return;
   }
-
   marcada = false;
-  mostrarAlerta(data.mensaje || 'Asistencia desmarcada.', 'success');
+  ui.toast(data.mensaje || i18n.t('comun.exito'), 'success');
   actualizarBoton();
 }
 
 toggleBtn.addEventListener('click', async () => {
-  toggleBtn.disabled = true;
-
+  ui.setLoading(toggleBtn, true);
   try {
     if (marcada) {
       await desmarcar();
@@ -164,7 +143,7 @@ toggleBtn.addEventListener('click', async () => {
       await marcar();
     }
   } finally {
-    toggleBtn.disabled = false;
+    ui.setLoading(toggleBtn, false);
   }
 });
 

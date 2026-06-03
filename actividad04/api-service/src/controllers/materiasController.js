@@ -34,8 +34,11 @@ const obtenerMaterias = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    const total = await prisma.materia.count({ where });
+
     await guardarCache(cacheKey, materias);
     res.set('X-Cache', 'MISS');
+    res.set('X-Total-Count', String(total));
     res.json(materias);
   } catch (error) {
     next(error);

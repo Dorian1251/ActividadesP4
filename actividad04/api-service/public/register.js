@@ -1,9 +1,13 @@
+/* public/register.js */
+
 const registerBtn = document.getElementById('registerBtn');
 const nombreInput = document.getElementById('nombre');
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
 const rolInput = document.getElementById('rol');
 const alerta = document.getElementById('alerta');
+
+i18n.applyTranslations();
 
 async function registrar() {
   const nombre = nombreInput.value.trim();
@@ -21,6 +25,7 @@ async function registrar() {
     return;
   }
 
+  ui.setLoading(registerBtn, true);
   try {
     const res = await fetch('/auth/register', {
       method: 'POST',
@@ -34,12 +39,15 @@ async function registrar() {
       return;
     }
 
+    ui.toast('Cuenta creada correctamente', 'success');
     alerta.innerHTML = '<div class="alert alert-success">Cuenta creada. Redirigiendo...</div>';
     setTimeout(() => {
       window.location.href = '/static/login.html';
-    }, 1500);
+    }, 1200);
   } catch (error) {
     alerta.innerHTML = '<div class="alert alert-error">Error de conexion con el servidor</div>';
+  } finally {
+    ui.setLoading(registerBtn, false);
   }
 }
 

@@ -33,8 +33,11 @@ const obtenerRecursos = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    const total = await prisma.recurso.count({ where });
+
     await guardarCache(cacheKey, recursos);
     res.set('X-Cache', 'MISS');
+    res.set('X-Total-Count', String(total));
     res.json(recursos);
   } catch (error) {
     next(error);

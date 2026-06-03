@@ -42,8 +42,11 @@ const obtenerGrupos = async (req, res, next) => {
       orderBy: { id: 'asc' }
     });
 
+    const total = await prisma.grupo.count({ where });
+
     await guardarCache(cacheKey, grupos);
     res.set('X-Cache', 'MISS');
+    res.set('X-Total-Count', String(total));
     res.json(grupos);
   } catch (error) {
     next(error);

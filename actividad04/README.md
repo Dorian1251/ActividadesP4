@@ -8,6 +8,16 @@ El sistema permite que los usuarios se registren, inicien sesion con JWT, usen r
 
 La API mantiene la integracion con Supabase PostgreSQL, Prisma ORM, Redis Upstash, Socket.io y Swagger/OpenAPI.
 
+## Mejoras UX/UI
+
+- Dashboard con estadisticas reales: 4 tarjetas (proximas sesiones, % asistencia, materias, sesiones totales) y 2 listas (proximas sesiones, recursos recientes).
+- Busqueda, filtros y paginacion con header `X-Total-Count`.
+- Calendario visual con FullCalendar (mes/semana/lista) cargado por CDN.
+- Tema claro/oscuro con toggle persistente en `localStorage`.
+- Toasts y spinners nativos de Bootstrap 5.3, modal de confirmacion reemplazando `window.confirm`.
+- Internacionalizacion espanol/ingles con switcher y persistencia.
+- Responsive mobile en `qr.html`, `asistencia.html` y todo el panel.
+
 ## Funcionalidades implementadas
 
 - Registro de usuarios con contrasena hasheada usando `bcryptjs`.

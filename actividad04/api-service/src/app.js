@@ -15,6 +15,7 @@ const materiasRoutes = require('./routes/materiasRoutes');
 const gruposRoutes = require('./routes/gruposRoutes');
 const sesionesRoutes = require('./routes/sesionesRoutes');
 const recursosRoutes = require('./routes/recursosRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
  
 const app = express();
  
@@ -42,7 +43,8 @@ app.use(helmet());
 app.use(cors({
   origin: corsOrigen,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['X-Total-Count', 'X-Cache']
 }));
 app.use(generalLimiter);
 app.use(express.json({ limit: '100kb' }));
@@ -78,6 +80,7 @@ app.use('/api/materias', materiasRoutes);
 app.use('/api/grupos', gruposRoutes);
 app.use('/api/sesiones', sesionesRoutes);
 app.use('/api/recursos', recursosRoutes);
+app.use('/api/dashboard', dashboardRoutes);
  
 app.use(errorHandler);
  

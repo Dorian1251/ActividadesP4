@@ -5,34 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StudySync - Login</title>
   <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script>
+    (function () {
+      const theme = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
 </head>
 <body>
   <div class="card auth-box">
-    <h1>StudySync</h1>
-    <p class="subtitle">Ingresa con tu cuenta</p>
+    <h1 data-i18n="app.nombre">StudySync</h1>
+    <p class="subtitle" data-i18n="app.tagline">Ingresa con tu cuenta</p>
 
     <div id="alerta"></div>
 
     <div class="form-group">
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="ana@upds.edu.bo">
+      <label for="email" data-i18n="auth.email">Email</label>
+      <input type="email" id="email" data-i18n-placeholder="auth.emailPlaceholder" placeholder="ana@upds.edu.bo">
     </div>
 
     <div class="form-group">
-      <label for="password">Contrasena</label>
+      <label for="password" data-i18n="auth.password">Contrasena</label>
       <input type="password" id="password">
     </div>
 
     <button id="loginBtn" class="btn btn-primary" style="width: 100%;" type="button">
-      Ingresar
+      <i class="bi bi-box-arrow-in-right me-1"></i><span data-i18n="auth.entrar">Ingresar</span>
     </button>
 
     <p style="text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-      Sin cuenta?
-      <a href="/static/register.html" style="color: var(--accent-blue);">Registrate</a>
+      <span data-i18n="auth.sinCuenta">Sin cuenta?</span>
+      <a href="/static/register.html" style="color: var(--accent-blue);" data-i18n="auth.registrate">Registrate</a>
     </p>
   </div>
 
+  <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999;"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/i18n.js"></script>
+  <script src="/static/ui.js"></script>
   <script src="/static/login.js"></script>
 </body>
 </html>

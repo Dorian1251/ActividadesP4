@@ -1,7 +1,11 @@
+/* public/login.js */
+
 const loginBtn = document.getElementById('loginBtn');
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
 const alerta = document.getElementById('alerta');
+
+i18n.applyTranslations();
 
 async function login() {
   const email = emailInput.value.trim();
@@ -12,6 +16,7 @@ async function login() {
     return;
   }
 
+  ui.setLoading(loginBtn, true);
   try {
     const res = await fetch('/auth/login', {
       method: 'POST',
@@ -29,11 +34,14 @@ async function login() {
     sessionStorage.setItem('refreshToken', data.refreshToken);
     sessionStorage.setItem('usuario', JSON.stringify(data.usuario));
 
+    ui.toast(i18n.t('comun.exito'), 'success');
     const redirectAfterLogin = sessionStorage.getItem('redirectAfterLogin') || '/static/index.html';
     sessionStorage.removeItem('redirectAfterLogin');
-    window.location.href = redirectAfterLogin;
+    setTimeout(() => { window.location.href = redirectAfterLogin; }, 400);
   } catch (error) {
     alerta.innerHTML = '<div class="alert alert-error">Error de conexion</div>';
+  } finally {
+    ui.setLoading(loginBtn, false);
   }
 }
 

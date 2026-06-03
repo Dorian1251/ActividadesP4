@@ -18,7 +18,8 @@ const swaggerSpec = {
     { name: 'Grupos' },
     { name: 'Sesiones' },
     { name: 'Asistencias' },
-    { name: 'Recursos' }
+    { name: 'Recursos' },
+    { name: 'Dashboard' }
   ],
   components: {
     securitySchemes: {
@@ -527,6 +528,30 @@ const swaggerSpec = {
         summary: 'Eliminar recurso',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
         responses: { 200: { description: 'Recurso eliminado' } }
+      }
+    },
+    '/dashboard': {
+      get: {
+        tags: ['Dashboard'],
+        summary: 'Obtener resumen del usuario autenticado',
+        description: 'Devuelve sesiones proximas, porcentaje de asistencia, recursos recientes y conteos.',
+        responses: {
+          200: {
+            description: 'Resumen del dashboard',
+            content: {
+              'application/json': {
+                example: {
+                  usuario: { id: 1, nombre: 'Dorian', email: 'dorian@upds.edu.bo', rol: 'estudiante' },
+                  proximasSesiones: [],
+                  asistencia: { total: 8, asistidas: 6, porcentaje: 75 },
+                  recursosRecientes: [],
+                  materiasCount: 4,
+                  sesionesCount: 12
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

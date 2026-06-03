@@ -18,11 +18,19 @@ const obtenerSesiones = async (req, res, next) => {
       return res.json(cache);
     }
 
-    const { q, materia, fecha } = req.query;
+    const { q, materia, fecha, fechaDesde, fechaHasta } = req.query;
     const { skip, take } = obtenerPaginacion(req.query);
+
+    let filtroFecha = undefined;
+    if (fecha) {
+      filtroFecha = fecha;
+    } else if (fechaDesde || fechaHasta) {
+      filtroFecha = limpiarDatos({ gte: fechaDesde, lte: fechaHasta });
+    }
+
     const where = limpiarDatos({
       titulo: q ? { contains: q, mode: 'insensitive' } : undefined,
-      fecha: fecha || undefined,
+      fecha: filtroFecha,
       materia: materia
         ? {
             OR: [
@@ -39,11 +47,14 @@ const obtenerSesiones = async (req, res, next) => {
       include: includeRelaciones,
       skip,
       take,
-      orderBy: { id: 'asc' }
+      orderBy: [{ fecha: 'asc' }, { hora: 'asc' }]
     });
+
+    const total = await prisma.sesion.count({ where });
 
     await guardarCache(cacheKey, sesiones);
     res.set('X-Cache', 'MISS');
+    res.set('X-Total-Count', String(total));
     res.json(sesiones);
   } catch (error) {
     next(error);
